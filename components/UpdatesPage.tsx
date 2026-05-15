@@ -557,7 +557,7 @@ function formatWeekLabel(start: string, end: string): string {
 
 export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMentions, figmaMentions, projectKeys, jiraBaseUrl, calendarSyncKey }: Props) {
   const [flags, setFlags] = useState<ItemFlags>({})
-  const [calendar, setCalendar] = useState<CalendarWeekly | null>(null)
+  const [calendarByWeek, setCalendarByWeek] = useState<Record<string, CalendarWeekly>>({})
   const [weekOffset, setWeekOffset] = useState(0)
   const [taskModalOpen, setTaskModalOpen] = useState(false)
   const [taskModalSummary, setTaskModalSummary] = useState('')
@@ -586,30 +586,7 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
         const r = await fetch('/api/calendar/weekly')
         const d = await r.json()
         if (!d.available) return
-
-        setCalendar(d as CalendarWeekly)
-
-        // Jump to the week the cache covers so users land on data
-        const cachedMon = new Date(`${d.week_start}T00:00:00`)
-        const today = new Date()
-        const dow = today.getDay()
-        const daysFromMon = dow === 0 ? 6 : dow - 1
-        const currentMon = new Date(today)
-        currentMon.setDate(today.getDate() - daysFromMon)
-        const diffWeeks = Math.round((cachedMon.getTime() - currentMon.getTime()) / (7 * 24 * 60 * 60 * 1000))
-        setWeekOffset(diffWeeks)
-
-        // Auto-sync if the cached week doesn't match the current week
-        if (diffWeeks !== 0) {
-          const syncRes = await fetch('/api/calendar/weekly', { method: 'POST' })
-          if (syncRes.ok) {
-            const synced = await syncRes.json()
-            if (synced.available) {
-              setCalendar(synced as CalendarWeekly)
-              setWeekOffset(0) // fresh data is for current week
-            }
-          }
-        }
+        setCalendarByWeek((d.weeks ?? {}) as Record<string, CalendarWeekly>)
       } catch { /* no calendar */ }
     }
     loadCalendar()
@@ -708,7 +685,8 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
 
   // ── Calendar: today's meetings ──
   const todayStr = new Date().toISOString().slice(0, 10)
-  const todayEntry = calendar?.daily_breakdown.find(d => d.date === todayStr)
+  const todayWeekStart = getWeekRange(0).start
+  const todayEntry = calendarByWeek[todayWeekStart]?.daily_breakdown.find(d => d.date === todayStr)
   const meetingCount = todayEntry?.meetings.length ?? 0
 
   // ── Summary line ──
@@ -746,19 +724,25 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
       </div>
 
       {/* ── Calendar ── */}
-      {!calendar ? (
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
-          <p className="text-sm text-gray-400 dark:text-gray-600">
-            Calendar not connected.{' '}
-            <a href="/?view=settings" className="underline hover:text-gray-600 dark:hover:text-gray-300">Set up in Settings →</a>
-          </p>
-        </div>
-      ) : (() => {
+      {(() => {
+        const hasAnyData = Object.keys(calendarByWeek).length > 0
         const { start: weekStart, end: weekEnd } = getWeekRange(weekOffset)
-        const displayBreakdown = calendar.daily_breakdown.filter(
-          d => d.date >= weekStart && d.date <= weekEnd
-        )
+        const weekData = calendarByWeek[weekStart]
+        const displayBreakdown = weekData?.daily_breakdown ?? []
         const isCurrentWeek = weekOffset === 0
+        const syncedAt = weekData?.synced_at
+
+        if (!hasAnyData) {
+          return (
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+              <p className="text-sm text-gray-400 dark:text-gray-600">
+                Calendar not connected.{' '}
+                <a href="/?view=settings" className="underline hover:text-gray-600 dark:hover:text-gray-300">Set up in Settings →</a>
+              </p>
+            </div>
+          )
+        }
+
         return (
           <div>
             {/* Week navigation */}
@@ -800,31 +784,31 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
                 </button>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {calendar.synced_at && (
-                <span style={{ fontSize: 11, color: 'var(--pdTextMuted)' }}>
-                  {(() => {
-                    const mins = Math.round((Date.now() - new Date(calendar.synced_at).getTime()) / 60000)
-                    if (mins < 1) return 'synced just now'
-                    if (mins < 60) return `synced ${mins}m ago`
-                    const hrs = Math.floor(mins / 60)
-                    if (hrs < 24) return `synced ${hrs}h ago`
-                    return `synced ${Math.floor(hrs / 24)}d ago`
-                  })()}
-                </span>
-              )}
-              {!isCurrentWeek && (
-                <button
-                  onClick={() => setWeekOffset(0)}
-                  style={{
-                    fontSize: 12, fontWeight: 500, padding: '4px 10px',
-                    borderRadius: 6, border: '1px solid var(--pdBorder)',
-                    background: 'var(--pdSurface1)', color: 'var(--pdTextMuted)',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Today
-                </button>
-              )}
+                {syncedAt && (
+                  <span style={{ fontSize: 11, color: 'var(--pdTextMuted)' }}>
+                    {(() => {
+                      const mins = Math.round((Date.now() - new Date(syncedAt).getTime()) / 60000)
+                      if (mins < 1) return 'synced just now'
+                      if (mins < 60) return `synced ${mins}m ago`
+                      const hrs = Math.floor(mins / 60)
+                      if (hrs < 24) return `synced ${hrs}h ago`
+                      return `synced ${Math.floor(hrs / 24)}d ago`
+                    })()}
+                  </span>
+                )}
+                {!isCurrentWeek && (
+                  <button
+                    onClick={() => setWeekOffset(0)}
+                    style={{
+                      fontSize: 12, fontWeight: 500, padding: '4px 10px',
+                      borderRadius: 6, border: '1px solid var(--pdBorder)',
+                      background: 'var(--pdSurface1)', color: 'var(--pdTextMuted)',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    Today
+                  </button>
+                )}
               </div>
             </div>
             {displayBreakdown.length === 0 ? (
@@ -837,15 +821,7 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
                 <div style={{ fontWeight: 600, color: 'var(--pdTextBase)', marginBottom: 4 }}>
                   No calendar data for this week
                 </div>
-                <div style={{ marginBottom: 16 }}>
-                  Synced data covers{' '}
-                  <button
-                    onClick={() => setWeekOffset(Math.round((new Date(`${calendar.week_start}T00:00:00`).getTime() - (() => { const t=new Date(); const d=t.getDay(); const m=new Date(t); m.setDate(t.getDate()-(d===0?6:d-1)); return m.getTime() })()) / (7*24*60*60*1000)))}
-                    style={{ color: 'var(--pdAccent05)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: 0, fontSize: 13 }}
-                  >
-                    {formatWeekLabel(calendar.week_start, calendar.week_end)}
-                  </button>
-                </div>
+                <div>Hit &ldquo;Sync now&rdquo; to pull in data from Google Calendar.</div>
               </div>
             ) : (
               <CalendarWeekGrid

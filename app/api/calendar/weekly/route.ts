@@ -5,6 +5,7 @@ import { isConfigured, isConnected, fetchWeeklyForCache } from '@/lib/google-cal
 import { DATA_DIR } from '@/lib/data-dir'
 
 const CACHE_PATH = path.join(DATA_DIR, 'calendar-cache.json')
+const WEEKS_CACHE_PATH = path.join(DATA_DIR, 'calendar-weeks-cache.json')
 
 export type MeetingEntry = {
   title: string
@@ -42,17 +43,31 @@ function getWeekBounds(): { weekStart: string; weekEnd: string } {
 }
 
 export async function GET() {
-  if (!fs.existsSync(CACHE_PATH)) {
-    return NextResponse.json({ available: false })
+  const weeks: Record<string, CalendarWeekly> = {}
+
+  // Primary: multi-week cache
+  if (fs.existsSync(WEEKS_CACHE_PATH)) {
+    try {
+      const raw = fs.readFileSync(WEEKS_CACHE_PATH, 'utf-8')
+      Object.assign(weeks, JSON.parse(raw))
+    } catch { /* ignore */ }
   }
 
-  try {
-    const raw = fs.readFileSync(CACHE_PATH, 'utf-8')
-    const data = JSON.parse(raw) as CalendarWeekly
-    return NextResponse.json({ available: true, ...data })
-  } catch {
+  // Backwards-compat: merge old single-week cache if not already present
+  if (fs.existsSync(CACHE_PATH)) {
+    try {
+      const raw = fs.readFileSync(CACHE_PATH, 'utf-8')
+      const data = JSON.parse(raw) as CalendarWeekly
+      if (data.week_start && !weeks[data.week_start]) {
+        weeks[data.week_start] = data
+      }
+    } catch { /* ignore */ }
+  }
+
+  if (Object.keys(weeks).length === 0) {
     return NextResponse.json({ available: false })
   }
+  return NextResponse.json({ available: true, weeks })
 }
 
 // POST — sync current week from Google Calendar OAuth and write to cache
@@ -90,9 +105,19 @@ export async function POST() {
     }
 
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
+
+    // Write to multi-week cache (merge)
+    let weeks: Record<string, CalendarWeekly> = {}
+    if (fs.existsSync(WEEKS_CACHE_PATH)) {
+      try { weeks = JSON.parse(fs.readFileSync(WEEKS_CACHE_PATH, 'utf-8')) } catch { /* ignore */ }
+    }
+    weeks[cache.week_start] = cache
+    fs.writeFileSync(WEEKS_CACHE_PATH, JSON.stringify(weeks, null, 2))
+
+    // Also write single-week cache for backwards compat
     fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2))
 
-    return NextResponse.json({ available: true, ...cache })
+    return NextResponse.json({ available: true, weeks })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Calendar sync failed'
     console.error('[/api/calendar/weekly POST]', message)

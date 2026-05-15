@@ -809,16 +809,6 @@ function EntryCard({
                       ) : (
                         <div className="flex flex-wrap gap-2">
                           <button
-                            onClick={summarizeThread}
-                            disabled={summaryState === 'loading'}
-                            className={`${BTN_DEFAULT} ${summaryState === 'loading' ? 'opacity-60' : ''}`}
-                          >
-                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                              <path d="M8 1l1.5 4H14l-3.5 2.5 1.5 4L8 9 4 11.5l1.5-4L2 5h4.5L8 1z" fill="currentColor"/>
-                            </svg>
-                            {summaryState === 'loading' ? 'Summarising…' : summaryState === 'error' ? 'Retry summary' : 'Summarise with AI'}
-                          </button>
-                          <button
                             onClick={showReply ? () => setShowReply(false) : draftThreadReply}
                             className={showReply ? BTN_ACTIVE_BLUE : BTN_DEFAULT}
                           >

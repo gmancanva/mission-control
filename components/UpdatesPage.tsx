@@ -229,10 +229,6 @@ function MentionCard({
   const [thread, setThread] = useState<ThreadMsg[] | null>(null)
   const [threadLive, setThreadLive] = useState(false)
 
-  // AI summary
-  const [aiSummary, setAiSummary] = useState<string | null>(null)
-  const [summaryLoading, setSummaryLoading] = useState(false)
-
   // Reply
   const [showReply, setShowReply] = useState(false)
   const [draft, setDraft] = useState('')
@@ -260,36 +256,6 @@ function MentionCard({
     if (threadOpen) { setThreadOpen(false); return }
     setThreadOpen(true)
     if (!thread) await fetchThread()
-  }
-
-  async function summarize() {
-    setSummaryLoading(true)
-    try {
-      if (item.source === 'slack' && item.slackChannel && item.slackTs) {
-        const msgs = thread ?? await fetchThread()
-        if (msgs && msgs.length > 0) {
-          const sumRes = await fetch('/api/slack/summarize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ messages: msgs }),
-          })
-          const sumData = await sumRes.json() as { summary?: string; error?: string }
-          setAiSummary(sumData.summary ?? sumData.error ?? 'Could not summarize.')
-          return
-        }
-      }
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'summarize', text: item.text, source: item.source, project: item.project, author: item.author }),
-      })
-      const data = await res.json() as { result?: string; error?: string }
-      setAiSummary(data.result ?? data.error ?? 'Could not summarize.')
-    } catch {
-      setAiSummary('Failed to summarize.')
-    } finally {
-      setSummaryLoading(false)
-    }
   }
 
   async function draftReply() {
@@ -380,17 +346,6 @@ function MentionCard({
               </Tooltip>
             </div>
 
-            {/* AI summary */}
-            {aiSummary && (
-              <div className="mb-2 flex items-start gap-2 rounded-lg px-3 py-2 bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800/50">
-                <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="text-violet-500 shrink-0 mt-0.5">
-                  <path d="M8 1l1.5 4H14l-3.5 2.5 1.5 4L8 9 4 11.5l1.5-4L2 5h4.5L8 1z" fill="currentColor"/>
-                </svg>
-                <p className="text-xs text-violet-800 dark:text-violet-200 leading-relaxed flex-1">{aiSummary}</p>
-                <button onClick={() => setAiSummary(null)} className="text-violet-400 hover:text-violet-600 dark:hover:text-violet-300 text-xs shrink-0">✕</button>
-              </div>
-            )}
-
             <div className={`text-sm leading-relaxed ${resolved ? 'line-through text-gray-400' : 'text-gray-800 dark:text-gray-200'}`}>
               {item.source === 'slack' ? <SlackText text={item.text} /> : item.text}
             </div>
@@ -409,14 +364,6 @@ function MentionCard({
                   Open
                 </a>
               )}
-
-              <button onClick={summaryLoading ? undefined : (aiSummary ? () => setAiSummary(null) : summarize)}
-                className={`${aiSummary ? `${BTN_BASE} bg-violet-50 dark:bg-violet-950/30 border-violet-200 dark:border-violet-800/50 text-violet-700 dark:text-violet-400` : BTN_DEFAULT} ${summaryLoading ? 'opacity-60' : ''}`}>
-                <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
-                  <path d="M8 1l1.5 4H14l-3.5 2.5 1.5 4L8 9 4 11.5l1.5-4L2 5h4.5L8 1z" fill="currentColor"/>
-                </svg>
-                {summaryLoading ? 'Summarising…' : aiSummary ? 'Hide summary' : 'Summarise'}
-              </button>
 
               <button onClick={showReply ? () => setShowReply(false) : draftReply}
                 className={showReply ? `${BTN_BASE} bg-sky-50 dark:bg-sky-950/30 border-sky-300 dark:border-sky-700 text-sky-700 dark:text-sky-400` : BTN_DEFAULT}>
@@ -464,7 +411,16 @@ function MentionCard({
             </div>
           )}
           {!threadLoading && thread === null && (
-            <p className="text-xs text-gray-400 dark:text-gray-600 italic">Thread not available.</p>
+            <div className="flex items-center gap-3 py-1">
+              <p className="text-xs text-gray-400 dark:text-gray-500 italic">Thread couldn&apos;t be loaded.</p>
+              {item.link && (
+                <a href={item.link} target="_blank" rel="noopener noreferrer"
+                  className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1">
+                  Open in Slack
+                  <svg width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M7 1h4v4M11 1L5.5 6.5M5 2H2a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </a>
+              )}
+            </div>
           )}
           {!threadLoading && thread && thread.length > 0 && (
             <div className="space-y-2.5">

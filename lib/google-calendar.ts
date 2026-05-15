@@ -143,13 +143,14 @@ export async function getCalendarCapacity(
   const workingDays = dateRange(sprintStartIso, sprintEndIso)
 
   // Fetch all events in the sprint window in one call
+  // Note: do NOT use a narrow fields mask here — Google Calendar omits attendees.self
+  // when false, which breaks the acceptance filter. Request full attendees/organizer objects.
   const params = new URLSearchParams({
     timeMin: new Date(sprintStartIso).toISOString(),
     timeMax: new Date(`${sprintEndIso}T23:59:59Z`).toISOString(),
     singleEvents: 'true',
     maxResults: '2500',
-    // Explicitly request self+responseStatus so the filter below works correctly
-    fields: 'items(summary,start,end,status,organizer(self),attendees(self,responseStatus,email))',
+    fields: 'items(summary,start,end,status,organizer,attendees)',
   })
 
   const res = await fetch(`${CALENDAR_EVENTS_URL}?${params}`, {
@@ -168,8 +169,8 @@ export async function getCalendarCapacity(
       status?: string
       start?: { dateTime?: string; date?: string }
       end?: { dateTime?: string; date?: string }
-      organizer?: { self?: boolean }
-      attendees?: Array<{ self?: boolean; responseStatus?: string }>
+      organizer?: { self?: boolean; email?: string }
+      attendees?: Array<{ email?: string; self?: boolean; responseStatus?: string }>
     }>
   }
 
@@ -179,21 +180,21 @@ export async function getCalendarCapacity(
     if (!ev.start?.dateTime) return false  // skip all-day events
 
     const attendees = ev.attendees ?? []
-    const hasOtherAttendees = attendees.some(a => !a.self)
 
-    // Solo calendar blocks (no other attendees) are not meetings — skip them
-    // This excludes "Focus time", "Lunch", personal blocks etc.
+    // Solo calendar blocks (no other attendees) are not meetings — skip Focus time, Lunch, etc.
+    // An attendee without self=true means it's someone else.
+    const hasOtherAttendees = attendees.some(a => a.self !== true)
     if (!hasOtherAttendees) return false
 
-    // For events with other attendees: only count if you accepted or are tentative
-    // Declined and needsAction (not yet responded) are excluded
-    const selfAttendee = attendees.find(a => a.self)
+    // Find the authenticated user's attendee entry (Google marks it with self: true)
+    const selfAttendee = attendees.find(a => a.self === true)
     if (selfAttendee) {
+      // Only count meetings explicitly accepted or tentative — not needsAction/declined
       return selfAttendee.responseStatus === 'accepted' || selfAttendee.responseStatus === 'tentative'
     }
 
-    // If no attendee entry has self=true (e.g. you organised without adding yourself),
-    // include only if you're the organiser — you're definitely attending your own meeting
+    // No self-marked entry found: user organised this meeting without adding themselves.
+    // Only include if they're confirmed as organiser (they're definitely attending).
     return ev.organizer?.self === true
   })
 
@@ -321,16 +322,25 @@ export async function fetchWeeklyForCache(weekStart: string, weekEnd: string): P
     const durationMin = Math.round(durationMs / 60_000)
     if (durationMin > 480) continue // skip all-day blockers (> 8 hours)
 
-    const isMine = ev.organizer?.self === true ||
-      (ev.attendees ?? []).some(a => a.self && (a.responseStatus === 'accepted' || a.responseStatus === 'tentative'))
-    if (!isMine) continue
+    // Must be a real meeting with other attendees — skip solo blocks (Focus time, Lunch, etc.)
+    const attendees = ev.attendees ?? []
+    const hasOtherAttendees = attendees.some(a => a.self !== true)
+    if (!hasOtherAttendees) continue
+
+    // Only count meetings the user accepted or is tentative for
+    const selfAttendee = attendees.find(a => a.self === true)
+    if (selfAttendee) {
+      if (selfAttendee.responseStatus !== 'accepted' && selfAttendee.responseStatus !== 'tentative') continue
+    } else if (ev.organizer?.self !== true) {
+      // No self-entry and not organiser → can't confirm attendance
+      continue
+    }
 
     const dedupKey = `${ev.summary ?? ''}|${ev.start.dateTime}`
     if (seen.has(dedupKey)) continue
     seen.add(dedupKey)
 
     const conferenceLink = ev.conferenceData?.entryPoints?.find(e => e.entryPointType === 'video')?.uri ?? null
-    const selfAttendee = (ev.attendees ?? []).find(a => a.self)
 
     meetings.push({
       title: ev.summary ?? 'Untitled',

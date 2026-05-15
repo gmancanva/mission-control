@@ -89,22 +89,40 @@ export async function fetchMessages(): Promise<SlackMessage[]> {
     workspaceUrl = (auth as { url?: string }).url?.replace(/\/$/, '') ?? ''
   } catch { /* workspaceUrl stays empty */ }
 
-  // Use configured channel IDs, or auto-discover channels the bot is in
+  // Use configured channel IDs, or auto-discover channels the bot is in.
+  // Try each conversation type separately — mixing types in one call fails with
+  // missing_scope if any single type isn't authorised yet.
   let channelIds = getChannelIds()
 
+  // Track which channels are DMs/MPIMs so we skip the @mention filter for them
+  const dmChannelIds = new Set<string>()
+
   if (channelIds.length === 0) {
-    try {
-      // List channels the bot is a member of (public + private + DMs)
-      const list = await client.conversations.list({
-        types: 'public_channel,private_channel,mpim,im',
-        exclude_archived: true,
-        limit: 200,
-      })
-      channelIds = ((list.channels ?? []) as Array<{ id?: string; is_member?: boolean }>)
-        .filter(c => c.is_member !== false && c.id)
-        .map(c => c.id!)
-        .slice(0, 100) // cap at 100 channels
-    } catch { /* no channels discovered */ }
+    type SlackChannel = { id?: string; is_member?: boolean; is_im?: boolean; is_mpim?: boolean }
+
+    const tryList = async (types: string): Promise<SlackChannel[]> => {
+      try {
+        const res = await client.conversations.list({ types, exclude_archived: true, limit: 200 })
+        return (res.channels ?? []) as SlackChannel[]
+      } catch {
+        return [] // missing_scope or other error — skip this type silently
+      }
+    }
+
+    const [publicChans, privateChans, mpims, ims] = await Promise.all([
+      tryList('public_channel'),
+      tryList('private_channel'),
+      tryList('mpim'),
+      tryList('im'),
+    ])
+
+    const allChans = [...publicChans, ...privateChans, ...mpims, ...ims]
+    for (const c of allChans) {
+      if (!c.id || c.is_member === false) continue
+      channelIds.push(c.id)
+      if (c.is_im || c.is_mpim) dmChannelIds.add(c.id)
+    }
+    channelIds = channelIds.slice(0, 200)
   }
 
   if (channelIds.length === 0) return []
@@ -127,12 +145,20 @@ export async function fetchMessages(): Promise<SlackMessage[]> {
   }
 
   for (const channelId of channelIds) {
+    const isDm = dmChannelIds.has(channelId)
+
     // Resolve channel name
     let channelName = channelId
     try {
       const info = await client.conversations.info({ channel: channelId })
-      const ch = info.channel as { name?: string; is_im?: boolean; is_mpim?: boolean } | undefined
-      channelName = ch?.name ?? channelId
+      const ch = info.channel as { name?: string; is_im?: boolean; is_mpim?: boolean; user?: string } | undefined
+      if (ch?.is_im && ch.user) {
+        // For 1:1 DMs, label as the other person's name once we resolve them
+        await resolveUser(ch.user)
+        channelName = `DM: ${userNames[ch.user] ?? ch.user}`
+      } else {
+        channelName = ch?.name ?? channelId
+      }
     } catch { /* keep channelId */ }
 
     // Fetch recent history
@@ -146,7 +172,11 @@ export async function fetchMessages(): Promise<SlackMessage[]> {
 
     for (const msg of historyMessages) {
       if (!msg.ts || msg.bot_id) continue  // skip bot messages
-      if (mySlackId && !msg.text?.includes(`<@${mySlackId}>`)) continue  // skip non-mentions
+
+      // In DMs/MPIMs every message is relevant — no @mention needed.
+      // In public/private channels only include messages that mention the user.
+      const isMention = msg.text?.includes(`<@${mySlackId}>`)
+      if (!isDm && mySlackId && !isMention) continue
 
       await resolveUser(msg.user ?? '')
       allMessages.push({

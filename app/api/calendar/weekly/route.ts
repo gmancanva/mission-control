@@ -11,6 +11,7 @@ export type MeetingEntry = {
   start: string
   end: string
   duration_min: number
+  responseStatus?: string   // 'accepted' | 'tentative' | 'needsAction' | 'declined'
 }
 
 export type DayEntry = {
@@ -67,12 +68,25 @@ export async function POST() {
     const { weekStart, weekEnd } = getWeekBounds()
     const dailyBreakdown = await fetchWeeklyForCache(weekStart, weekEnd)
 
+    // Map WeeklyDayEntry → DayEntry, carrying responseStatus through
+    const mappedBreakdown = dailyBreakdown.map(d => ({
+      date: d.date,
+      total_min: d.total_min,
+      meetings: d.meetings.map(m => ({
+        title: m.title,
+        start: m.start,
+        end: m.end,
+        duration_min: m.duration_min,
+        responseStatus: m.self_response_status ?? undefined,
+      })),
+    }))
+
     const cache: CalendarWeekly = {
       synced_at: new Date().toISOString(),
       week_start: weekStart,
       week_end: weekEnd,
       weekly_total_min: dailyBreakdown.reduce((s, d) => s + d.total_min, 0),
-      daily_breakdown: dailyBreakdown,
+      daily_breakdown: mappedBreakdown,
     }
 
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })

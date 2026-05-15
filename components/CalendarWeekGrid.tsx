@@ -7,6 +7,7 @@ type MeetingEntry = {
   start: string
   end: string
   duration_min: number
+  responseStatus?: string  // 'accepted' | 'tentative' | 'needsAction' | 'declined'
 }
 
 type DayEntry = {
@@ -170,23 +171,27 @@ export default function CalendarWeekGrid({
                   const startDecimal = start.getHours() + start.getMinutes() / 60
                   const top = Math.max(0, (startDecimal - GRID_START) * PX_PER_HOUR)
                   const height = Math.max(22, (m.duration_min / 60) * PX_PER_HOUR - 2)
-                  const rsvp = meetingRsvp[m.start]
                   const isSelected = expandedMeeting === m.start
+                  const isPending = m.responseStatus === 'needsAction'
+                  const isTentative = m.responseStatus === 'tentative'
 
                   return (
                     <button
                       key={i}
                       onClick={() => onExpandMeeting(m.start)}
                       className={`absolute left-0.5 right-0.5 rounded text-left overflow-hidden px-1.5 py-0.5 transition-all z-[5] ${
-                        rsvp === 'attending'
-                          ? 'bg-green-100 dark:bg-green-900/50 border border-green-300 dark:border-green-700 hover:bg-green-200 dark:hover:bg-green-900/70'
-                          : rsvp === 'not-attending'
-                          ? 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 opacity-50 hover:opacity-70'
+                        isPending
+                          ? 'bg-amber-50 dark:bg-amber-950/30 border border-dashed border-amber-300 dark:border-amber-700 hover:bg-amber-100 dark:hover:bg-amber-950/50'
+                          : isTentative
+                          ? 'bg-purple-50 dark:bg-purple-950/30 border border-dashed border-purple-300 dark:border-purple-700 hover:bg-purple-100 dark:hover:bg-purple-950/50'
                           : 'bg-blue-100 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 hover:bg-blue-200 dark:hover:bg-blue-900/60'
                       } ${isSelected ? 'ring-2 ring-blue-500 dark:ring-blue-400 z-[6]' : ''}`}
                       style={{ top, height }}
                     >
-                      <p className="text-xs font-medium leading-tight text-gray-800 dark:text-gray-100 truncate">{m.title}</p>
+                      <div className="flex items-start gap-1">
+                        <p className="text-xs font-medium leading-tight text-gray-800 dark:text-gray-100 truncate flex-1">{m.title}</p>
+                        {isPending && <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 shrink-0 leading-tight">?</span>}
+                      </div>
                       {height > 32 && (
                         <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight mt-0.5">
                           {start.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
@@ -207,7 +212,19 @@ export default function CalendarWeekGrid({
           <div className="space-y-3">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{expandedMeetingEntry.title}</h3>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{expandedMeetingEntry.title}</h3>
+                  {expandedMeetingEntry.responseStatus === 'needsAction' && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                      Awaiting response
+                    </span>
+                  )}
+                  {expandedMeetingEntry.responseStatus === 'tentative' && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-700">
+                      Tentative
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                   {new Date(expandedMeetingEntry.start).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
                   {' – '}
@@ -290,27 +307,50 @@ export default function CalendarWeekGrid({
               </div>
             )}
 
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => onSetRsvp(expandedMeeting!, 'attending')}
-                className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
-                  expandedRsvp === 'attending'
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-green-50 dark:hover:bg-green-900/30 hover:text-green-700 dark:hover:text-green-400 hover:border-green-300 dark:hover:border-green-700'
-                }`}
+            {/* RSVP row */}
+            <div className="flex items-center gap-2 pt-1 flex-wrap">
+              {expandedMeetingEntry.responseStatus === 'needsAction' && (
+                <a
+                  href={`https://calendar.google.com/calendar/r/week/${new Date(expandedMeetingEntry.start).getFullYear()}/${new Date(expandedMeetingEntry.start).getMonth() + 1}/${new Date(expandedMeetingEntry.start).getDate()}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm px-3 py-1.5 rounded-md font-medium bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+                >
+                  Respond in Google Calendar →
+                </a>
+              )}
+              {expandedMeetingEntry.responseStatus !== 'needsAction' && (
+                <>
+                  <button
+                    onClick={() => onSetRsvp(expandedMeeting!, 'attending')}
+                    className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
+                      expandedRsvp === 'attending'
+                        ? 'bg-green-600 text-white'
+                        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-green-50 dark:hover:bg-green-900/30 hover:text-green-700 dark:hover:text-green-400 hover:border-green-300 dark:hover:border-green-700'
+                    }`}
+                  >
+                    ✓ Attending
+                  </button>
+                  <button
+                    onClick={() => onSetRsvp(expandedMeeting!, 'not-attending')}
+                    className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
+                      expandedRsvp === 'not-attending'
+                        ? 'bg-red-500 text-white'
+                        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700'
+                    }`}
+                  >
+                    ✗ Not attending
+                  </button>
+                </>
+              )}
+              <a
+                href="https://calendar.google.com/calendar/r"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-auto"
               >
-                ✓ Attending
-              </button>
-              <button
-                onClick={() => onSetRsvp(expandedMeeting!, 'not-attending')}
-                className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
-                  expandedRsvp === 'not-attending'
-                    ? 'bg-red-500 text-white'
-                    : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700'
-                }`}
-              >
-                ✗ Not attending
-              </button>
+                Open Google Calendar ↗
+              </a>
             </div>
           </div>
         </div>

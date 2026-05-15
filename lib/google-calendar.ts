@@ -327,10 +327,10 @@ export async function fetchWeeklyForCache(weekStart: string, weekEnd: string): P
     const hasOtherAttendees = attendees.some(a => a.self !== true)
     if (!hasOtherAttendees) continue
 
-    // Only count meetings the user accepted or is tentative for
+    // Include accepted, tentative, and needsAction (pending) — skip declined
     const selfAttendee = attendees.find(a => a.self === true)
     if (selfAttendee) {
-      if (selfAttendee.responseStatus !== 'accepted' && selfAttendee.responseStatus !== 'tentative') continue
+      if (selfAttendee.responseStatus === 'declined') continue
     } else if (ev.organizer?.self !== true) {
       // No self-entry and not organiser → can't confirm attendance
       continue

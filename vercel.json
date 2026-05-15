@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/canva/sync",
+      "schedule": "17 */4 * * *"
+    },
+    {
+      "path": "/api/jira?bust=1",
+      "schedule": "7 */1 * * *"
+    },
+    {
+      "path": "/api/slack?bust=1",
+      "schedule": "13 */1 * * *"
+    }
+  ]
+}

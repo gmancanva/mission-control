@@ -55,6 +55,14 @@ function collectSprints(epics: JiraEpic[]): JiraSprint[] {
 
 // ─── Sprint card ─────────────────────────────────────────────────────────────
 
+function getEpicStatusKey(status: string): 'todo' | 'progress' | 'review' | 'done' {
+  const s = status.toLowerCase()
+  if (s.includes('progress') || s.includes('doing') || s.includes('start') || s.includes('building') || s.includes('shaping')) return 'progress'
+  if (s.includes('review') || s.includes('testing') || s.includes('block')) return 'review'
+  if (s.includes('done') || s.includes('complete') || s.includes('close') || s.includes('delivered') || s.includes('released') || s.includes('ship')) return 'done'
+  return 'todo'
+}
+
 function SprintCard({ sprint, epics }: { sprint: JiraSprint; epics: JiraEpic[] }) {
   const inSprint = epics.filter(e => e.sprints.some(s => s.id === sprint.id))
   const byProject = inSprint.reduce<Record<string, JiraEpic[]>>((acc, e) => {
@@ -64,53 +72,89 @@ function SprintCard({ sprint, epics }: { sprint: JiraSprint; epics: JiraEpic[] }
 
   const isActive = sprint.state === 'active'
   const isFuture = sprint.state === 'future'
+  const isEmpty = inSprint.length === 0
 
   return (
-    <div className={`rounded-xl border p-4 ${
+    <div className={`rounded-xl border overflow-hidden ${
       isActive
-        ? 'border-blue-300 dark:border-blue-700 bg-blue-50/60 dark:bg-blue-950/20'
+        ? 'border-blue-200 dark:border-blue-800'
         : isFuture
-          ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/60'
-          : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
+          ? 'border-dashed border-gray-200 dark:border-gray-700'
+          : 'border-gray-200 dark:border-gray-800'
     }`}>
-      <div className="flex items-start gap-3">
-        <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
-          isActive ? 'bg-blue-500' : isFuture ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-300 dark:bg-gray-700'
+      {/* Sprint header */}
+      <div className={`flex items-center gap-3 px-4 py-3 ${
+        isActive
+          ? 'bg-blue-50 dark:bg-blue-950/30'
+          : isFuture
+            ? 'bg-gray-50/60 dark:bg-gray-900/40'
+            : 'bg-gray-50 dark:bg-gray-900/60'
+      }`}>
+        <div className={`w-2 h-2 rounded-full shrink-0 ${
+          isActive ? 'bg-blue-500' : isFuture ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-700'
         }`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className={`text-sm font-semibold ${
-              isActive ? 'text-blue-700 dark:text-blue-400' : 'text-gray-700 dark:text-gray-300'
+              isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'
             }`}>{sprint.name}</span>
-            {isActive && <span className="text-xs font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">Active</span>}
-            <span className="text-xs text-gray-400 dark:text-gray-500 ml-auto">
-              {fmt(sprint.startDate)} – {fmt(sprint.endDate)}
-            </span>
+            {isActive && (
+              <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                Active
+              </span>
+            )}
+            {isFuture && (
+              <span className="text-xs font-medium text-gray-400 dark:text-gray-500 px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700">
+                Upcoming
+              </span>
+            )}
           </div>
           {sprint.goal && (
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 leading-relaxed">{sprint.goal}</p>
-          )}
-          {Object.entries(byProject).length > 0 && (
-            <div className="flex flex-wrap gap-3 mt-2.5">
-              {Object.entries(byProject).map(([proj, epicList]) => (
-                <div key={proj} className="flex items-center gap-1.5">
-                  <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{proj}</span>
-                  <div className="flex flex-wrap gap-1">
-                    {epicList.slice(0, 4).map(e => (
-                      <span key={e.id} className="text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 px-1.5 py-0.5 rounded truncate max-w-[140px]" title={e.summary}>
-                        {e.summary.length > 28 ? e.summary.slice(0, 28) + '…' : e.summary}
-                      </span>
-                    ))}
-                    {epicList.length > 4 && (
-                      <span className="text-xs text-gray-400">+{epicList.length - 4}</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{sprint.goal}</p>
           )}
         </div>
+        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 tabular-nums">
+          {fmt(sprint.startDate)} – {fmt(sprint.endDate)}
+        </span>
       </div>
+
+      {/* Epic list */}
+      {isEmpty ? (
+        <div className="px-4 py-3">
+          <p className="text-xs text-gray-400 dark:text-gray-600 italic">No epics linked to this sprint.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+          {Object.entries(byProject).map(([proj, epicList]) => (
+            <div key={proj}>
+              {/* Project label */}
+              <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
+                <span className="text-[10px] font-bold tracking-widest uppercase text-gray-400 dark:text-gray-500">{proj}</span>
+                <span className="text-[10px] text-gray-300 dark:text-gray-700">{epicList.length} epic{epicList.length !== 1 ? 's' : ''}</span>
+              </div>
+              {epicList.map((e, idx) => {
+                const statusKey = getEpicStatusKey(e.status)
+                const end = e.dueDate ?? e.handoverDate
+                return (
+                  <div
+                    key={e.id}
+                    className={`flex items-center gap-3 px-4 py-2.5 ${idx < epicList.length - 1 ? 'border-b border-gray-50 dark:border-gray-800/40' : ''}`}
+                  >
+                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500 shrink-0 w-24">{e.key}</span>
+                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-200 truncate">{e.summary}</span>
+                    {end && (
+                      <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 tabular-nums">
+                        {fmt(end)}
+                      </span>
+                    )}
+                    <span className={`StatusPill StatusPill--${statusKey} shrink-0`}>{e.status}</span>
+                  </div>
+                )
+              })}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -259,7 +303,7 @@ function GanttChart({ epics, sprints }: { epics: JiraEpic[]; sprints: JiraSprint
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function TimelineTab({ epics }: Props) {
-  const [tab, setTab] = useState<'sprints' | 'roadmap'>('sprints')
+  const [tab, setTab] = useState<'sprints' | 'roadmap'>('roadmap')
 
   if (epics.length === 0) {
     return (
@@ -285,16 +329,16 @@ export default function TimelineTab({ epics }: Props) {
       <div className="flex items-center gap-3">
         <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 text-xs">
           <button
-            onClick={() => setTab('sprints')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${tab === 'sprints' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
-          >
-            Sprints
-          </button>
-          <button
             onClick={() => setTab('roadmap')}
             className={`px-3 py-1.5 rounded-md transition-colors ${tab === 'roadmap' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
           >
             Roadmap
+          </button>
+          <button
+            onClick={() => setTab('sprints')}
+            className={`px-3 py-1.5 rounded-md transition-colors ${tab === 'sprints' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+          >
+            Sprints
           </button>
         </div>
         <span className="text-xs text-gray-400 dark:text-gray-600">

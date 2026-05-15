@@ -3,7 +3,10 @@ import { isConnected, isConfigured, getEventDetails } from '@/lib/google-calenda
 import path from 'path'
 import fs from 'fs'
 
-const CACHE_PATH = path.join(process.cwd(), 'data', 'calendar-cache.json')
+import { DATA_DIR } from '@/lib/data-dir'
+
+const WEEKS_CACHE_PATH = path.join(DATA_DIR, 'calendar-weeks-cache.json')
+const LEGACY_CACHE_PATH = path.join(DATA_DIR, 'calendar-cache.json')
 
 type CacheMeeting = {
   title: string
@@ -18,16 +21,33 @@ type CacheMeeting = {
   self_response_status?: string | null
 }
 type CacheDay = { date: string; meetings: CacheMeeting[]; total_min: number }
+type WeekData = { daily_breakdown: CacheDay[] }
 
-function findInCache(start: string) {
+function findInCache(start: string): CacheMeeting | null {
+  // Search multi-week cache first
   try {
-    if (!fs.existsSync(CACHE_PATH)) return null
-    const data = JSON.parse(fs.readFileSync(CACHE_PATH, 'utf-8')) as { daily_breakdown: CacheDay[] }
-    for (const day of data.daily_breakdown ?? []) {
-      const match = day.meetings.find(m => m.start === start)
-      if (match) return match
+    if (fs.existsSync(WEEKS_CACHE_PATH)) {
+      const weeks = JSON.parse(fs.readFileSync(WEEKS_CACHE_PATH, 'utf-8')) as Record<string, WeekData>
+      for (const week of Object.values(weeks)) {
+        for (const day of week.daily_breakdown ?? []) {
+          const match = day.meetings.find(m => m.start === start)
+          if (match) return match
+        }
+      }
     }
   } catch { /* ignore */ }
+
+  // Fall back to legacy single-week cache
+  try {
+    if (fs.existsSync(LEGACY_CACHE_PATH)) {
+      const data = JSON.parse(fs.readFileSync(LEGACY_CACHE_PATH, 'utf-8')) as WeekData
+      for (const day of data.daily_breakdown ?? []) {
+        const match = day.meetings.find(m => m.start === start)
+        if (match) return match
+      }
+    }
+  } catch { /* ignore */ }
+
   return null
 }
 

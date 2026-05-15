@@ -13,6 +13,12 @@ export type MeetingEntry = {
   end: string
   duration_min: number
   responseStatus?: string   // 'accepted' | 'tentative' | 'needsAction' | 'declined'
+  // Rich detail fields — populated when synced via Google Calendar OAuth
+  description?: string | null
+  location?: string | null
+  conference_link?: string | null
+  hangout_link?: string | null
+  attendees?: Array<{ email: string; displayName?: string; self?: boolean; organizer?: boolean; responseStatus?: string }>
 }
 
 export type DayEntry = {
@@ -83,7 +89,7 @@ export async function POST() {
     const { weekStart, weekEnd } = getWeekBounds()
     const dailyBreakdown = await fetchWeeklyForCache(weekStart, weekEnd)
 
-    // Map WeeklyDayEntry → DayEntry, carrying responseStatus through
+    // Map WeeklyDayEntry → DayEntry, preserving all rich detail fields
     const mappedBreakdown = dailyBreakdown.map(d => ({
       date: d.date,
       total_min: d.total_min,
@@ -93,6 +99,11 @@ export async function POST() {
         end: m.end,
         duration_min: m.duration_min,
         responseStatus: m.self_response_status ?? undefined,
+        description: m.description ?? undefined,
+        location: m.location ?? undefined,
+        conference_link: m.conference_link ?? undefined,
+        hangout_link: m.hangout_link ?? undefined,
+        attendees: m.attendees.length > 0 ? m.attendees : undefined,
       })),
     }))
 

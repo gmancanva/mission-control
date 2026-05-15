@@ -246,66 +246,64 @@ export default function CalendarWeekGrid({
             {expandedDetails === 'loading' && (
               <p className="text-sm text-gray-400">Loading details…</p>
             )}
-            {expandedDetails === 'error' && (
-              <p className="text-sm text-red-400">Couldn't load event details.</p>
-            )}
-            {expandedDetails && expandedDetails !== 'loading' && expandedDetails !== 'error' && (
-              <div className="space-y-2">
-                {expandedDetails.description && (
-                  <p
-                    className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: expandedDetails.description.replace(/<(?!br\s*\/?)[^>]+>/gi, '') }}
-                  />
-                )}
-                {expandedDetails.location && (
-                  <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                    </svg>
-                    {expandedDetails.location}
-                  </div>
-                )}
-                {(expandedDetails.hangoutLink || expandedDetails.conferenceLink) && (
-                  <a
-                    href={(expandedDetails.hangoutLink || expandedDetails.conferenceLink)!}
-                    target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                  >
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Join video call
-                  </a>
-                )}
-                {expandedDetails.attendees.length > 0 && (
-                  <div>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">
-                      {expandedDetails.attendees.length} attendee{expandedDetails.attendees.length !== 1 ? 's' : ''}
-                    </p>
-                    <div className="flex flex-wrap gap-1">
-                      {expandedDetails.attendees.slice(0, 14).map((a, j) => (
-                        <span key={j} className={`text-xs px-1.5 py-0.5 rounded ${
-                          a.responseStatus === 'accepted'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                            : a.responseStatus === 'declined'
-                            ? 'bg-red-100 text-red-500 dark:bg-red-900/40 dark:text-red-400 line-through opacity-60'
-                            : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                        }`}>
-                          {a.displayName || a.email.split('@')[0]}
-                        </span>
-                      ))}
-                      {expandedDetails.attendees.length > 14 && (
-                        <span className="text-xs text-gray-400">+{expandedDetails.attendees.length - 14} more</span>
-                      )}
+            {expandedDetails && expandedDetails !== 'loading' && expandedDetails !== 'error' && (() => {
+              const hasDetails = !!(expandedDetails.description || expandedDetails.location || expandedDetails.hangoutLink || expandedDetails.conferenceLink || expandedDetails.attendees.length > 0)
+              if (!hasDetails) return null
+              return (
+                <div className="space-y-2">
+                  {expandedDetails.description && (
+                    <p
+                      className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-4"
+                      dangerouslySetInnerHTML={{ __html: expandedDetails.description.replace(/<(?!br\s*\/?)[^>]+>/gi, '') }}
+                    />
+                  )}
+                  {expandedDetails.location && (
+                    <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="truncate">{expandedDetails.location}</span>
                     </div>
-                  </div>
-                )}
-                {!expandedDetails.description && !expandedDetails.location && !expandedDetails.hangoutLink && !expandedDetails.conferenceLink && expandedDetails.attendees.length === 0 && (
-                  <p className="text-sm text-gray-400">No additional details available.</p>
-                )}
-              </div>
-            )}
+                  )}
+                  {(expandedDetails.hangoutLink || expandedDetails.conferenceLink) && (
+                    <a
+                      href={(expandedDetails.hangoutLink || expandedDetails.conferenceLink)!}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      Join video call
+                    </a>
+                  )}
+                  {expandedDetails.attendees.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">
+                        {expandedDetails.attendees.length} attendee{expandedDetails.attendees.length !== 1 ? 's' : ''}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {expandedDetails.attendees.slice(0, 14).map((a, j) => (
+                          <span key={j} className={`text-xs px-1.5 py-0.5 rounded ${
+                            a.responseStatus === 'accepted'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                              : a.responseStatus === 'declined'
+                              ? 'bg-red-100 text-red-500 dark:bg-red-900/40 dark:text-red-400 line-through opacity-60'
+                              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                          }`}>
+                            {a.displayName || a.email.split('@')[0]}
+                          </span>
+                        ))}
+                        {expandedDetails.attendees.length > 14 && (
+                          <span className="text-xs text-gray-400">+{expandedDetails.attendees.length - 14} more</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* RSVP row */}
             <div className="flex items-center gap-2 pt-1 flex-wrap">

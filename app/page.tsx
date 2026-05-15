@@ -157,6 +157,7 @@ export default function DashboardPage() {
   const searchParams = useSearchParams()
   const [activeView, setActiveView] = useState<View>('updates')
   const [syncing, setSyncing] = useState(false)
+  const [syncStatusIdx, setSyncStatusIdx] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
@@ -295,6 +296,21 @@ export default function DashboardPage() {
       })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  const SYNC_STATUSES = [
+    'Pulling Jira tickets…',
+    'Fetching Slack messages…',
+    'Syncing Google Calendar…',
+    'Checking Canva mentions…',
+    'Refreshing Figma activity…',
+  ]
+
+  useEffect(() => {
+    if (!syncing) { setSyncStatusIdx(0); return }
+    const id = setInterval(() => setSyncStatusIdx(i => (i + 1) % SYNC_STATUSES.length), 1800)
+    return () => clearInterval(id)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncing])
 
   async function handleSync() {
     setSyncing(true)
@@ -439,6 +455,15 @@ export default function DashboardPage() {
               </span>
             )}
           </button>
+          {syncing && (
+            <p style={{
+              fontSize: 11, color: 'var(--pdTextMuted)',
+              textAlign: 'center', marginTop: 6,
+              transition: 'opacity 0.3s',
+            }}>
+              {SYNC_STATUSES[syncStatusIdx]}
+            </p>
+          )}
         </div>
         <button
           className={`PdNavItem${activeView === 'settings' ? ' is-selected' : ''}`}

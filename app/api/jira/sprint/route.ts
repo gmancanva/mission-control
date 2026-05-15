@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
-import { fetchSprintData } from '@/lib/jira'
+import { NextRequest } from 'next/server'
+import { fetchSprintData, bustCache } from '@/lib/jira'
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    if (request.nextUrl.searchParams.get('bust') === '1') bustCache()
     const data = await fetchSprintData()
     return NextResponse.json(data)
   } catch (error) {

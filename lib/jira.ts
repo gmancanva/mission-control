@@ -744,13 +744,15 @@ export async function fetchSprintData(): Promise<{
 
   let sprintTickets: SprintTicket[] = []
   try {
-    const jql = `assignee = currentUser() AND sprint in openSprints() AND statusCategory != Done ORDER BY status ASC`
-    const data = await jiraFetch(
-      `/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=summary,status,priority,duedate,project,parent,timetracking&maxResults=100`
-    ) as {
+    const myAccountId = await getMyAccountId()
+    const assigneeClause = myAccountId ? `assignee = "${myAccountId}"` : `assignee = currentUser()`
+    const projectClause = keys.length > 0
+      ? `project in (${keys.map(k => `"${k}"`).join(',')}) AND `
+      : ''
+
+    type IssueResult = {
       issues?: Array<{
-        id: string
-        key: string
+        id: string; key: string
         fields: {
           summary?: string
           status?: { name?: string; statusCategory?: { key?: string } }
@@ -763,20 +765,42 @@ export async function fetchSprintData(): Promise<{
       }>
     }
 
-    sprintTickets = (data.issues ?? []).map((issue) => ({
-      id: issue.id,
-      key: issue.key,
-      summary: issue.fields.summary ?? '',
-      status: issue.fields.status?.name ?? 'Unknown',
-      statusCategoryKey: issue.fields.status?.statusCategory?.key ?? 'new',
-      dueDate: issue.fields.duedate ?? null,
-      project: issue.fields.project?.key ?? '',
-      priority: issue.fields.priority?.name ?? 'Medium',
-      parentKey: issue.fields.parent?.key ?? null,
-      parentSummary: issue.fields.parent?.fields?.summary ?? null,
-      estimateHours: Math.round((issue.fields.timetracking?.originalEstimateSeconds ?? 0) / 3600),
-    }))
-  } catch { /* openSprints() JQL may not be available */ }
+    const fetchIssues = (jql: string) =>
+      jiraFetch(`/rest/api/3/search/jql?jql=${encodeURIComponent(jql)}&fields=summary,status,priority,duedate,project,parent,timetracking&maxResults=100`) as Promise<IssueResult>
+
+    const toTickets = (data: IssueResult): SprintTicket[] =>
+      (data.issues ?? []).map(issue => ({
+        id: issue.id,
+        key: issue.key,
+        summary: issue.fields.summary ?? '',
+        status: issue.fields.status?.name ?? 'Unknown',
+        statusCategoryKey: issue.fields.status?.statusCategory?.key ?? 'new',
+        dueDate: issue.fields.duedate ?? null,
+        project: issue.fields.project?.key ?? '',
+        priority: issue.fields.priority?.name ?? 'Medium',
+        parentKey: issue.fields.parent?.key ?? null,
+        parentSummary: issue.fields.parent?.fields?.summary ?? null,
+        estimateHours: Math.round((issue.fields.timetracking?.originalEstimateSeconds ?? 0) / 3600),
+      }))
+
+    // 1st attempt: sprint-scoped (most precise)
+    const sprintClause = active?.id ? `sprint = ${active.id}` : `sprint in openSprints()`
+    const sprintJql = `${projectClause}${assigneeClause} AND ${sprintClause} AND statusCategory != Done ORDER BY status ASC`
+    try {
+      const data = await fetchIssues(sprintJql)
+      sprintTickets = toTickets(data)
+    } catch { /* sprint JQL unavailable — fall through */ }
+
+    // 2nd attempt: fall back to "In Progress" tickets if sprint query gave nothing
+    // (common when teams use status-based workflow without Jira sprint management)
+    if (sprintTickets.length === 0) {
+      const fallbackJql = `${projectClause}${assigneeClause} AND statusCategory = "In Progress" ORDER BY updated DESC`
+      const data = await fetchIssues(fallbackJql)
+      sprintTickets = toTickets(data)
+    }
+  } catch (err) {
+    console.error('[fetchSprintData] sprint tickets fetch failed:', err instanceof Error ? err.message : err)
+  }
 
   const result = { active, next, sprintTickets }
   setInCache(cacheKey, result)

@@ -148,7 +148,8 @@ export async function getCalendarCapacity(
     timeMax: new Date(`${sprintEndIso}T23:59:59Z`).toISOString(),
     singleEvents: 'true',
     maxResults: '2500',
-    fields: 'items(summary,start,end,status,attendees,organizer)',
+    // Explicitly request self+responseStatus so the filter below works correctly
+    fields: 'items(summary,start,end,status,organizer(self),attendees(self,responseStatus,email))',
   })
 
   const res = await fetch(`${CALENDAR_EVENTS_URL}?${params}`, {
@@ -172,13 +173,28 @@ export async function getCalendarCapacity(
     }>
   }
 
-  // Filter to events the user is attending (accepted/tentative) or organised
+  // Filter to actual meetings the user is attending
   const myEvents = (data.items ?? []).filter((ev) => {
     if (ev.status === 'cancelled') return false
     if (!ev.start?.dateTime) return false  // skip all-day events
-    const isMine = ev.organizer?.self === true ||
-      (ev.attendees ?? []).some((a) => a.self && (a.responseStatus === 'accepted' || a.responseStatus === 'tentative'))
-    return isMine
+
+    const attendees = ev.attendees ?? []
+    const hasOtherAttendees = attendees.some(a => !a.self)
+
+    // Solo calendar blocks (no other attendees) are not meetings — skip them
+    // This excludes "Focus time", "Lunch", personal blocks etc.
+    if (!hasOtherAttendees) return false
+
+    // For events with other attendees: only count if you accepted or are tentative
+    // Declined and needsAction (not yet responded) are excluded
+    const selfAttendee = attendees.find(a => a.self)
+    if (selfAttendee) {
+      return selfAttendee.responseStatus === 'accepted' || selfAttendee.responseStatus === 'tentative'
+    }
+
+    // If no attendee entry has self=true (e.g. you organised without adding yourself),
+    // include only if you're the organiser — you're definitely attending your own meeting
+    return ev.organizer?.self === true
   })
 
   // Group events by working day

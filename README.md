@@ -25,8 +25,8 @@ Built with Next.js 14, SQLite, and the Anthropic/OpenAI APIs.
 ### 1. Clone and install
 
 ```bash
-git clone https://github.com/gmancanva/pd-tracker.git
-cd pd-tracker
+git clone https://github.com/gmancanva/mission-control.git
+cd mission-control
 npm install
 ```
 

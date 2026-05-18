@@ -172,6 +172,7 @@ type SettingsData = {
   }
   googleCalendar: {
     connected: boolean
+    hasCache?: boolean
     email: string | null
     syncedAt: string | null
   }
@@ -444,71 +445,18 @@ function JiraCard({ data, onSaved }: { data: SettingsData['jira']; onSaved: () =
 // ── Google Calendar card ──────────────────────────────────────────────────────
 
 function GoogleCalendarCard({
-  creds, calendar, onSaved, onDisconnect, urlError,
+  calendar,
 }: {
-  creds: SettingsData['googleCreds']
   calendar: SettingsData['googleCalendar']
-  onSaved: () => void
-  onDisconnect: () => void
-  urlError?: string | null
 }) {
-  const credsConfigured = creds.source !== 'none'
-  const [editingCreds, setEditingCreds] = useState(!credsConfigured && !calendar.connected)
-  const [form, setForm] = useState({ clientId: '', clientSecret: '' })
-  const [saving, setSaving] = useState(false)
-  const [disconnecting, setDisconnecting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
-  async function handleSaveCreds() {
-    if (!form.clientId && !creds.clientIdSet) { setError('Client ID is required'); return }
-    setSaving(true); setError(null)
-    try {
-      const res = await fetch('/api/settings', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'google', ...form }),
-      })
-      if (!res.ok) throw new Error('Save failed')
-      onSaved()
-      setEditingCreds(false)
-      setForm({ clientId: '', clientSecret: '' })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Save failed')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function handleDisconnect() {
-    setDisconnecting(true)
-    try {
-      await fetch('/api/auth/google/disconnect', { method: 'POST' })
-      onDisconnect()
-    } finally {
-      setDisconnecting(false)
-    }
-  }
-
   const syncLabel = calendar.syncedAt
     ? `Synced ${new Date(calendar.syncedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
     : null
-  const description = calendar.connected
-    ? calendar.email
-      ? `Connected as ${calendar.email}${syncLabel ? ` · ${syncLabel}` : ''}`
-      : syncLabel ?? 'Calendar data synced'
-    : credsConfigured && !editingCreds
-    ? 'Credentials saved — authorise calendar access below'
-    : 'Powers live sprint capacity based on your actual meetings'
+  const description = calendar.hasCache
+    ? `Synced directly${syncLabel ? ` · ${syncLabel}` : ''} — ask Claude to refresh anytime`
+    : 'Ask Claude to "refresh my calendar" to pull in this week\'s meetings'
 
-  const status = calendar.connected ? <ConnectedBadge /> : undefined
-
-  const showEdit = calendar.connected
-    ? () => setEditingCreds(true)
-    : credsConfigured && !editingCreds
-    ? () => setEditingCreds(true)
-    : undefined
-
-  const hasChildren = editingCreds || (!editingCreds && credsConfigured && !calendar.connected) || urlError
+  const status = calendar.hasCache ? <ConnectedBadge /> : undefined
 
   return (
     <ConnectionCard
@@ -518,99 +466,7 @@ function GoogleCalendarCard({
       iconBg="#F0F4FF"
       iconColor="#1A73E8"
       status={status}
-      onEdit={showEdit}
-    >
-      {hasChildren && (
-        <>
-          {/* OAuth error from callback */}
-          {urlError && (
-            <div style={{
-              marginBottom: 12, padding: '8px 12px',
-              background: 'var(--pdStatusReviewBg)', border: '1px solid var(--pdStatusReviewBorder)',
-              borderRadius: 6, fontSize: 12, color: 'var(--pdStatusReviewFg)',
-            }}>
-              {(() => { try { return decodeURIComponent(urlError) } catch { return urlError } })()}
-            </div>
-          )}
-
-          {/* Credentials form */}
-          {editingCreds && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{
-                padding: '10px 12px',
-                background: 'var(--pdSurface2)',
-                borderRadius: 6, fontSize: 12, color: 'var(--pdTextMuted)', lineHeight: 1.6,
-              }}>
-                <strong style={{ color: 'var(--pdTextBase)' }}>Setup steps:</strong>
-                <ol style={{ margin: '6px 0 0', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <li>Go to <strong style={{ color: 'var(--pdTextBase)' }}>console.cloud.google.com</strong> → APIs &amp; Services → Credentials</li>
-                  <li>Create an <strong style={{ color: 'var(--pdTextBase)' }}>OAuth 2.0 Client ID</strong> (type: Web application)</li>
-                  <li>Add authorised redirect URI: <code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>http://127.0.0.1:3000/api/auth/google/callback</code></li>
-                  <li>Enable the <strong style={{ color: 'var(--pdTextBase)' }}>Google Calendar API</strong> in APIs &amp; Services → Library</li>
-                </ol>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <Field
-                  label="Client ID"
-                  value={form.clientId}
-                  onChange={v => setForm(f => ({ ...f, clientId: v }))}
-                  placeholder={creds.clientIdSet ? '••••••••  (leave blank to keep)' : 'Paste Client ID'}
-                  hint="Ends in .apps.googleusercontent.com"
-                />
-                <Field
-                  label="Client Secret"
-                  value={form.clientSecret}
-                  onChange={v => setForm(f => ({ ...f, clientSecret: v }))}
-                  type="password"
-                  placeholder={creds.clientSecretSet ? '••••••••  (leave blank to keep)' : 'Paste Client Secret'}
-                  hint="Found next to the Client ID in GCP console"
-                />
-              </div>
-              {error && <p style={{ fontSize: 12, color: 'var(--pdPrioHigh)', margin: 0 }}>{error}</p>}
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                <button className="PdButton PdButton--tertiary PdButton--small" onClick={() => { setEditingCreds(false); setError(null) }}>
-                  Cancel
-                </button>
-                <button
-                  className="PdButton PdButton--primary PdButton--small"
-                  onClick={handleSaveCreds}
-                  disabled={saving}
-                  style={{ opacity: saving ? 0.6 : 1 }}
-                >
-                  {saving ? 'Saving…' : 'Save credentials'}
-                </button>
-                {calendar.connected && (
-                  <button
-                    className="PdButton PdButton--tertiary PdButton--small"
-                    onClick={handleDisconnect}
-                    disabled={disconnecting}
-                    style={{ opacity: disconnecting ? 0.5 : 1, color: 'var(--pdPrioHigh)' }}
-                  >
-                    {disconnecting ? 'Disconnecting…' : 'Disconnect'}
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* OAuth connect row — creds saved, not yet OAuth'd */}
-          {!editingCreds && credsConfigured && !calendar.connected && (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p style={{ fontSize: 12, color: 'var(--pdTextMuted)', margin: 0 }}>
-                Click to authorise <strong>read-only</strong> access to your primary Google Calendar — used to show meeting load and calculate sprint capacity. You&apos;ll be redirected to Google and back.
-              </p>
-              <a
-                href="/api/auth/google"
-                className="PdButton PdButton--primary PdButton--small"
-                style={{ display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', flexShrink: 0, marginLeft: 16 }}
-              >
-                <LinkIcon /> Connect Google Calendar
-              </a>
-            </div>
-          )}
-        </>
-      )}
-    </ConnectionCard>
+    />
   )
 }
 
@@ -1016,7 +872,8 @@ function CanvaCard({
 
   const status = data.connected ? <ConnectedBadge /> : undefined
   const showEdit = credsConfigured && !editingCreds ? () => setEditingCreds(true) : undefined
-  const hasChildren = editingCreds || (!editingCreds && credsConfigured && !data.connected) || !!urlError
+  // Only show the error banner when not connected (stale canva_error URL param should be ignored once OAuth succeeds)
+  const hasChildren = editingCreds || (!editingCreds && credsConfigured && !data.connected) || (!!urlError && !data.connected)
 
   return (
     <ConnectionCard
@@ -1030,8 +887,8 @@ function CanvaCard({
     >
       {hasChildren && (
         <>
-          {/* OAuth error from callback */}
-          {urlError && (
+          {/* OAuth error from callback — hide once successfully connected */}
+          {urlError && !data.connected && (
             <div style={{
               marginBottom: 12, padding: '8px 12px',
               background: 'var(--pdStatusReviewBg)', border: '1px solid var(--pdStatusReviewBorder)',
@@ -1039,7 +896,7 @@ function CanvaCard({
             }}>
               {(() => { try { return decodeURIComponent(urlError) } catch { return urlError } })()}
               {urlError.includes('invalid_scope') && (
-                <span> — Go to <strong>developers.canva.com</strong> → your integration → <strong>Scopes</strong> and enable Read for: <code>design:meta</code>, <code>comment</code>, <code>profile</code></span>
+                <span> — Your saved token is missing required scopes. <strong>Disconnect and reconnect Canva</strong> below to get a fresh token with the correct permissions.</span>
               )}
             </div>
           )}
@@ -1373,11 +1230,7 @@ export default function SettingsView({ urlError, canvaUrlError }: Props) {
               urlError={canvaUrlError}
             />
             <GoogleCalendarCard
-              creds={data.googleCreds}
               calendar={data.googleCalendar}
-              onSaved={load}
-              onDisconnect={() => setData(d => d ? { ...d, googleCalendar: { connected: false, email: null, syncedAt: null } } : d)}
-              urlError={urlError}
             />
           </div>
         )}

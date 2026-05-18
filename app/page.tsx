@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import type { JiraEpic, JiraTicket } from '@/lib/jira'
 import type { SlackMessage } from '@/lib/slack'
 import type { PinnedDecision } from '@/lib/db'
@@ -14,7 +14,6 @@ import MyTasks from '@/components/MyTasks'
 import CapacityView from '@/components/CapacityView'
 import SettingsView from '@/components/SettingsView'
 import TemplateTaskModal from '@/components/TemplateTaskModal'
-import ChatPanel from '@/components/ChatPanel'
 import UpdatesPage from '@/components/UpdatesPage'
 import OnboardingWizard from '@/components/OnboardingWizard'
 import { useTheme } from '@/components/ThemeProvider'
@@ -127,13 +126,6 @@ function SearchIcon() {
   )
 }
 
-function BellIcon() {
-  return (
-    <svg viewBox="0 0 18 18" fill="none" style={{ width: 18, height: 18 }}>
-      <path d="M4.5 12.5V8a4.5 4.5 0 0 1 9 0v4.5l1.5 2H3l1.5-2zM7 14.5a2 2 0 0 0 4 0" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-    </svg>
-  )
-}
 
 function PlusIcon() {
   return (
@@ -155,6 +147,7 @@ function CogIcon() {
 export default function DashboardPage() {
   const { theme, toggle: toggleTheme } = useTheme()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [activeView, setActiveView] = useState<View>('updates')
   const [syncing, setSyncing] = useState(false)
   const [syncStatusIdx, setSyncStatusIdx] = useState(0)
@@ -170,7 +163,6 @@ export default function DashboardPage() {
   const [pinnedDecisions, setPinnedDecisions] = useState<PinnedDecision[]>([])
   const [canvaMentions, setCanvaMentions] = useState<CanvaMention[]>([])
   const [figmaMentions, setFigmaMentions] = useState<FigmaMention[]>([])
-  const [chatOpen, setChatOpen] = useState(false)
   const [jiraTab, setJiraTab] = useState<'projects' | 'timeline'>('projects')
 
   // Create modal state
@@ -188,11 +180,19 @@ export default function DashboardPage() {
   const urlError = searchParams.get('error')
   const canvaUrlError = searchParams.get('canva_error')
 
-  // Sync activeView with ?view= param (used by OAuth callback redirect)
+  // Sync activeView with ?view= param (used by OAuth callback redirects),
+  // then strip all URL params so reloading always lands on the Summary page.
   useEffect(() => {
     const v = searchParams.get('view')
-    if (v === 'settings') setActiveView('settings')
-  }, [searchParams])
+    const validViews: View[] = ['updates', 'tasks', 'jira-projects', 'capacity', 'comms', 'settings']
+    if (v && validViews.includes(v as View)) {
+      setActiveView(v as View)
+    }
+    // Strip params from URL so the next reload goes to the default (Summary)
+    if (searchParams.toString()) {
+      router.replace('/', { scroll: false })
+    }
+  }, [searchParams, router])
 
   const jiraBaseUrl = process.env.NEXT_PUBLIC_JIRA_BASE_URL ?? ''
 
@@ -270,14 +270,14 @@ export default function DashboardPage() {
     const forceSetup = searchParams.get('setup') === '1'
     fetch('/api/settings')
       .then(r => r.json())
-      .then((s: Record<string, { source?: string; connected?: boolean; botTokenSet?: boolean; accessTokenSet?: boolean }>) => {
+      .then((s: Record<string, { source?: string; connected?: boolean; hasCache?: boolean; botTokenSet?: boolean; accessTokenSet?: boolean }>) => {
         const cfgMap: Record<string, boolean> = {
           jira:   s.jira?.source !== 'none',
           slack:  s.slack?.source !== 'none',
           figma:  s.figma?.source !== 'none',
           canva:  s.canva?.source !== 'none',
-          // Google: count as configured if credentials are saved OR if the calendar OAuth token already exists
-          google: s.googleCreds?.source !== 'none' || s.googleCalendar?.connected === true,
+          // Google: count as configured if credentials saved, OAuth token exists, OR local cache present (MCP sync)
+          google: s.googleCreds?.source !== 'none' || s.googleCalendar?.connected === true || s.googleCalendar?.hasCache === true,
         }
         const cfgSet = new Set(Object.entries(cfgMap).filter(([, v]) => v).map(([k]) => k))
         setConfiguredIntegrations(cfgSet)
@@ -315,27 +315,26 @@ export default function DashboardPage() {
   async function handleSync() {
     setSyncing(true)
     try {
-      // Kick off all syncs in parallel — each is best-effort
-      const [, calRes, canvaSyncRes] = await Promise.allSettled([
+      // Jira + Slack + Calendar in parallel — all complete in a few seconds
+      const [, calRes] = await Promise.allSettled([
         fetchAll(true),
         fetch('/api/calendar/weekly', { method: 'POST' }),
-        fetch('/api/canva/sync'),            // live Canva API fetch (no-op if not connected)
       ])
 
-      if (calRes.status === 'fulfilled' && calRes.value.ok) {
-        setCalendarSyncKey(k => k + 1)
-      }
-
-      // If Canva returned fresh mentions, update state directly
-      if (canvaSyncRes.status === 'fulfilled' && canvaSyncRes.value.ok) {
-        try {
-          const canvaData = await canvaSyncRes.value.json() as { mentions?: CanvaMention[] }
-          if (canvaData.mentions) setCanvaMentions(canvaData.mentions)
-        } catch { /* ignore parse errors */ }
-      }
+      // Always re-fetch calendar from cache — even if the POST failed (no Google OAuth),
+      // the cache may have been updated externally (e.g. by MCP tools)
+      setCalendarSyncKey(k => k + 1)
     } finally {
       setSyncing(false)
     }
+
+    // Canva live sync is slow (~60s) — fire in the background after spinner clears
+    fetch('/api/canva/sync')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: { mentions?: CanvaMention[] } | null) => {
+        if (data?.mentions) setCanvaMentions(data.mentions)
+      })
+      .catch(() => { /* best-effort */ })
   }
 
   async function refreshPins() {
@@ -634,18 +633,6 @@ export default function DashboardPage() {
             setShowOnboarding(false)
             localStorage.setItem('onboarding_dismissed', '1')
           }}
-        />
-      )}
-
-      {/* ── Chat panel ── */}
-      {chatOpen && (
-        <ChatPanel
-          onClose={() => setChatOpen(false)}
-          slackMessages={slackMessages}
-          canvaMentions={canvaMentions}
-          figmaMentions={figmaMentions}
-          jiraEpics={epics}
-          myTickets={myTickets}
         />
       )}
 

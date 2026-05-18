@@ -407,7 +407,7 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
                 fontSize: 11, color: 'var(--pdTextSubtle)',
                 background: 'var(--pdSurface2)',
               }}>
-                Ask Claude to &quot;sync calendar&quot; to refresh with the latest data.
+                Hit &quot;Sync now&quot; in the sidebar to refresh with the latest data.
               </div>
             </div>
           </div>

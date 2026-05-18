@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -102,14 +102,14 @@ const INTEGRATION_STEPS: IntegrationStep[] = [
     unlocks: [
       'Weekly meeting breakdown on the Summary tab',
       'Total meeting hours so you can plan focus time',
-      'Meeting list for the current week',
+      'Full meeting list with Zoom links and attendees',
     ],
     howTo: [
-      'Go to console.cloud.google.com > APIs & Services > Credentials',
-      'Create OAuth 2.0 Client ID (Web application type)',
-      'Add redirect URI: http://127.0.0.1:3000/api/auth/google/callback',
+      'Calendar data is synced directly — no OAuth setup needed',
+      'Ask Claude to "refresh my calendar" to pull in the latest week',
+      'Events update automatically including attendees and Zoom links',
     ],
-    setupTime: '~5 min',
+    setupTime: 'Already set up',
   },
 ]
 
@@ -366,6 +366,95 @@ function DoneScreen({ configured, onClose }: { configured: Set<string>; onClose:
   )
 }
 
+// ─── Google Calendar setup panel ─────────────────────────────────────────────
+
+function GoogleCalendarSetup() {
+  const [copied, setCopied] = React.useState(false)
+  const prompt = `Please sync my Google Calendar into Mission Control for this week. Fetch all my events for the current week (Mon–Fri) including meeting titles, times, attendees, Zoom links and descriptions, then update the calendar cache.`
+
+  function copy() {
+    navigator.clipboard.writeText(prompt).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, flex: 1 }}>
+      <div style={{
+        background: 'var(--pdSurface1)', border: '1px solid var(--pdBorder)',
+        borderRadius: 10, padding: '14px 16px',
+      }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--pdTextMuted)', margin: 0, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          How it works
+        </p>
+        <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {[
+            <>This app syncs your calendar through <strong>Claude Code</strong>, which connects directly to your Google Calendar — no OAuth or Google Cloud setup needed.</>,
+            <>Make sure you have the <strong>Google Calendar MCP server</strong> enabled in your Claude Code settings (<code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>claude mcp add</code> or via the MCP settings UI).</>,
+            <>To sync, open a <strong>Claude Code chat</strong> in this project and paste the prompt below. Claude will fetch your events and update the app instantly.</>,
+          ].map((step, i) => (
+            <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <span style={{
+                width: 18, height: 18, borderRadius: 5, flexShrink: 0, marginTop: 2,
+                background: 'var(--pdSurface0)', border: '1px solid var(--pdBorder)',
+                fontSize: 10, fontWeight: 700,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: 'var(--pdTextMuted)',
+              }}>{i + 1}</span>
+              <span style={{ fontSize: 13, color: 'var(--pdTextSecondary)', lineHeight: 1.5 }}>{step}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Copyable sync prompt */}
+      <div style={{
+        background: 'var(--pdSurface1)', border: '1px solid var(--pdBorder)',
+        borderRadius: 10, padding: '12px 14px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--pdTextMuted)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Your sync prompt
+          </p>
+          <button
+            onClick={copy}
+            style={{
+              fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
+              background: copied ? '#dcfce7' : 'var(--pdSurface3)',
+              color: copied ? '#15803d' : 'var(--pdTextMuted)',
+              transition: 'all 0.15s',
+            }}
+          >
+            {copied ? '✓ Copied' : 'Copy'}
+          </button>
+        </div>
+        <p style={{
+          margin: 0, fontSize: 12, lineHeight: 1.6,
+          color: 'var(--pdTextSecondary)',
+          fontFamily: 'ui-monospace, monospace',
+          background: 'var(--pdSurface0)', borderRadius: 6,
+          padding: '8px 10px',
+        }}>
+          {prompt}
+        </p>
+      </div>
+
+      <div style={{ marginTop: 'auto' }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+          padding: '11px 20px', borderRadius: 10,
+          background: '#dcfce7', border: '1px solid #bbf7d0',
+          fontSize: 13, fontWeight: 600, color: '#15803d',
+        }}>
+          <CheckIcon size={14} />
+          No passwords or OAuth — Claude handles it all
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Integration step ─────────────────────────────────────────────────────────
 
 function IntegrationStep({
@@ -437,45 +526,51 @@ function IntegrationStep({
         </div>
       </div>
 
-      {/* How to */}
-      <div style={{
-        background: 'var(--pdSurface1)',
-        border: '1px solid var(--pdBorder)',
-        borderRadius: 10,
-        padding: '14px 16px',
-        marginBottom: 28,
-      }}>
-        <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--pdTextMuted)', margin: 0, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-          How to connect
-        </p>
-        <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 7 }}>
-          {step.howTo.map((h, i) => (
-            <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-              <span style={{
-                width: 18, height: 18, borderRadius: 5,
-                background: 'var(--pdSurface0)',
-                border: '1px solid var(--pdBorder)',
-                fontSize: 10, fontWeight: 700,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: 'var(--pdTextMuted)', flexShrink: 0, marginTop: 1,
-              }}>
-                {i + 1}
-              </span>
-              <span style={{ fontSize: 13, color: 'var(--pdTextSecondary)', lineHeight: 1.5 }}>{h}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
+      {/* How to — custom layout for Google Calendar */}
+      {step.id === 'google' ? (
+        <GoogleCalendarSetup />
+      ) : (
+        <>
+          <div style={{
+            background: 'var(--pdSurface1)',
+            border: '1px solid var(--pdBorder)',
+            borderRadius: 10,
+            padding: '14px 16px',
+            marginBottom: 28,
+          }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--pdTextMuted)', margin: 0, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              How to connect
+            </p>
+            <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {step.howTo.map((h, i) => (
+                <li key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <span style={{
+                    width: 18, height: 18, borderRadius: 5,
+                    background: 'var(--pdSurface0)',
+                    border: '1px solid var(--pdBorder)',
+                    fontSize: 10, fontWeight: 700,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: 'var(--pdTextMuted)', flexShrink: 0, marginTop: 1,
+                  }}>
+                    {i + 1}
+                  </span>
+                  <span style={{ fontSize: 13, color: 'var(--pdTextSecondary)', lineHeight: 1.5 }}>{h}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
 
-      <div style={{ marginTop: 'auto' }}>
-        <button
-          className="PdButton PdButton--primary"
-          onClick={onOpenSettings}
-          style={{ width: '100%', justifyContent: 'center' }}
-        >
-          Open Settings to connect
-        </button>
-      </div>
+          <div style={{ marginTop: 'auto' }}>
+            <button
+              className="PdButton PdButton--primary"
+              onClick={onOpenSettings}
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              Open Settings to connect
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

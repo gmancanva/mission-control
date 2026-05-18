@@ -815,6 +815,16 @@ function EntryCard({
                             <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h7A1.5 1.5 0 0 1 11 2.5v5A1.5 1.5 0 0 1 9.5 9H6.5L4 11V9H2.5A1.5 1.5 0 0 1 1 7.5v-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
                             Reply
                           </button>
+                          <button
+                            onClick={summarizeThread}
+                            disabled={summaryState === 'loading'}
+                            className={BTN_DEFAULT}
+                          >
+                            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" className={summaryState === 'loading' ? 'animate-spin' : ''}>
+                              <path d="M8 1l1.5 4H14l-3.5 2.5 1.5 4L8 9 4 11.5l1.5-4L2 5h4.5L8 1z" fill="currentColor"/>
+                            </svg>
+                            {summaryState === 'loading' ? 'Summarising…' : 'Summarise'}
+                          </button>
                         </div>
                       )}
 

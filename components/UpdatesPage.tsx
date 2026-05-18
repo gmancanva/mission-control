@@ -103,7 +103,7 @@ function relativeTime(dateStr: string): string {
 function isQuestion(text: string): boolean {
   const lower = text.toLowerCase()
   return text.includes('?') || lower.includes('wdyt') || lower.includes('thoughts') ||
-    lower.includes('what do you think') || lower.includes('lgtm') || lower.includes('feedback')
+    lower.includes('what do you think') || lower.includes('feedback')
 }
 
 function isWithinDays(dateStr: string, days: number): boolean {
@@ -641,7 +641,7 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
         try { return new URL(m.permalink).searchParams.get('thread_ts') ?? m.ts } catch { return m.ts }
       })(),
     })),
-    ...canvaMentions.filter(m => isWithinDays(m.created_at, 30)).map(m => ({
+    ...canvaMentions.filter(m => isWithinDays(m.created_at, 60) && m.text.trim()).map(m => ({
       id: `canva-${m.id}`,
       source: 'canva' as const,
       project: m.design_title,
@@ -651,7 +651,7 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
       link: m.design_url,
       isQuestion: isQuestion(m.text),
     })),
-    ...figmaMentions.filter(m => isWithinDays(m.created_at, 30)).map(m => ({
+    ...figmaMentions.filter(m => isWithinDays(m.created_at, 60) && m.text.trim()).map(m => ({
       id: `figma-${m.id}`,
       source: 'figma' as const,
       project: m.file_name,
@@ -665,7 +665,7 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
-  const needsAttention = allMentions.filter(m => isWithinDays(m.date, 7) && !flags[m.id]?.completed)
+  const needsAttention = allMentions.filter(m => isWithinDays(m.date, 14) && !flags[m.id]?.completed)
   const openQuestions = allMentions.filter(m => m.isQuestion && !flags[m.id]?.completed)
 
   // ── Jira tickets ──
@@ -889,7 +889,7 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
         {/* Needs attention tab */}
         {activeTab === 'attention' && (
           needsAttention.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-600 py-6 text-center">Nothing in the last 7 days — you&apos;re clear.</p>
+            <p className="text-sm text-gray-400 dark:text-gray-600 py-6 text-center">Nothing in the last 14 days — you&apos;re clear.</p>
           ) : (
             <div className="space-y-3">
               {(showAllAttention ? needsAttention : needsAttention.slice(0, SHOW_LIMIT)).map(item => (

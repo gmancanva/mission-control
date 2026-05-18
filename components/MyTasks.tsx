@@ -56,13 +56,6 @@ function PlusIcon() {
   )
 }
 
-function SortIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" style={{ width: 14, height: 14 }}>
-      <path d="M3.5 5L6 2.5L8.5 5M6 2.5V12M12.5 11L10 13.5L7.5 11M10 13.5V4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
-}
 
 export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTicketUpdated, onOpenCreate }: Props) {
   const [view, setView] = useState<'board' | 'list'>('board')
@@ -122,11 +115,6 @@ export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTi
             </button>
           )
         })}
-
-        <button className="FilterChip">
-          <SortIcon />
-          Sort
-        </button>
 
         <div style={{ flex: 1 }} />
 

@@ -43,19 +43,18 @@ export async function GET() {
   const googleSrc = googleCredsSource()
   const googleToken = await getToken('google')
 
-  // Treat a populated cache file as "connected" — calendar data may come from MCP sync
-  let calendarConnected = !!googleToken?.access_token
-  let calendarEmail = googleToken?.email ?? null
+  const calendarConnected = !!googleToken?.access_token
+  const calendarEmail = googleToken?.email ?? null
+  // Show the most recent synced_at from either the token or the cache file
   let calendarSyncedAt: string | null = null
-  if (!calendarConnected && fs.existsSync(CALENDAR_CACHE_PATH)) {
+  if (fs.existsSync(CALENDAR_CACHE_PATH)) {
     try {
       const cache = JSON.parse(fs.readFileSync(CALENDAR_CACHE_PATH, 'utf-8'))
-      if (cache.daily_breakdown?.length > 0) {
-        calendarConnected = true
-        calendarSyncedAt = cache.synced_at ?? null
-      }
+      calendarSyncedAt = cache.synced_at ?? null
     } catch { /* ignore */ }
   }
+  // Whether there is local cached data to display (even without live OAuth)
+  const calendarHasCache = fs.existsSync(CALENDAR_CACHE_PATH)
 
   return NextResponse.json({
     jira: {
@@ -72,6 +71,7 @@ export async function GET() {
     },
     googleCalendar: {
       connected: calendarConnected,
+      hasCache: calendarHasCache,
       email: calendarEmail,
       syncedAt: calendarSyncedAt,
     },

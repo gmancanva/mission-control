@@ -2138,3 +2138,50 @@ html, body {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* ============================================================
+   CALENDAR DESCRIPTION — rich HTML from Google Calendar
+   ============================================================ */
+.calendar-description a {
+  color: var(--pdAccent06);
+  text-decoration: underline;
+  word-break: break-all;
+  cursor: pointer;
+  pointer-events: auto;
+  position: relative;
+  z-index: 10;
+}
+.calendar-description a:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}
+.calendar-description ul,
+.calendar-description ol {
+  padding-left: 1.25rem;
+  margin: 0.25rem 0;
+}
+.calendar-description ul {
+  list-style-type: disc;
+}
+.calendar-description ol {
+  list-style-type: decimal;
+}
+.calendar-description li {
+  margin: 2px 0;
+}
+.calendar-description b,
+.calendar-description strong {
+  font-weight: 600;
+}
+.calendar-description i,
+.calendar-description em {
+  font-style: italic;
+}
+.calendar-description p {
+  margin: 0.25rem 0;
+}
+.calendar-description br {
+  display: block;
+  content: '';
+  margin-top: 0.2rem;
+}

@@ -283,7 +283,7 @@ export async function fetchWeeklyForCache(weekStart: string, weekEnd: string): P
     singleEvents: 'true',
     maxResults: '500',
     orderBy: 'startTime',
-    fields: 'items(summary,status,description,location,hangoutLink,conferenceData,start,end,organizer,attendees)',
+    fields: 'items(summary,status,description,location,hangoutLink,conferenceData,start,end,organizer,attendees,attendeesOmitted)',
   })
 
   const res = await fetch(`${CALENDAR_EVENTS_URL}?${params}`, {
@@ -307,6 +307,7 @@ export async function fetchWeeklyForCache(weekStart: string, weekEnd: string): P
       start?: { dateTime?: string; date?: string }
       end?: { dateTime?: string; date?: string }
       organizer?: { self?: boolean }
+      attendeesOmitted?: boolean
       attendees?: Array<{ email: string; displayName?: string; self?: boolean; organizer?: boolean; responseStatus?: string }>
     }>
   }
@@ -322,17 +323,23 @@ export async function fetchWeeklyForCache(weekStart: string, weekEnd: string): P
     const durationMin = Math.round(durationMs / 60_000)
     if (durationMin > 480) continue // skip all-day blockers (> 8 hours)
 
-    // Must be a real meeting with other attendees — skip solo blocks (Focus time, Lunch, etc.)
     const attendees = ev.attendees ?? []
-    const hasOtherAttendees = attendees.some(a => a.self !== true)
-    if (!hasOtherAttendees) continue
+    const attendeesOmitted = ev.attendeesOmitted === true
+
+    // For large events the API truncates the attendee list (attendeesOmitted: true).
+    // In that case trust that the event is on the calendar and skip the attendee checks.
+    if (!attendeesOmitted) {
+      // Skip solo blocks with no other attendees (Focus time, OOO, personal events, etc.)
+      const hasOtherAttendees = attendees.some(a => a.self !== true)
+      if (!hasOtherAttendees) continue
+    }
 
     // Include accepted, tentative, and needsAction (pending) — skip declined
     const selfAttendee = attendees.find(a => a.self === true)
     if (selfAttendee) {
       if (selfAttendee.responseStatus === 'declined') continue
-    } else if (ev.organizer?.self !== true) {
-      // No self-entry and not organiser → can't confirm attendance
+    } else if (!attendeesOmitted && ev.organizer?.self !== true) {
+      // No self-entry, attendees not omitted, and not the organiser → not on this event
       continue
     }
 

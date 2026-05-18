@@ -51,11 +51,20 @@ function getWeekBounds(): { weekStart: string; weekEnd: string } {
 export async function GET() {
   const weeks: Record<string, CalendarWeekly> = {}
 
-  // Primary: multi-week cache
+  // Primary: multi-week cache — validate each entry is a real CalendarWeekly object
   if (fs.existsSync(WEEKS_CACHE_PATH)) {
     try {
       const raw = fs.readFileSync(WEEKS_CACHE_PATH, 'utf-8')
-      Object.assign(weeks, JSON.parse(raw))
+      const parsed = JSON.parse(raw)
+      for (const [key, val] of Object.entries(parsed)) {
+        // Skip malformed entries (arrays, primitives, objects without week_start)
+        if (
+          val && typeof val === 'object' && !Array.isArray(val) &&
+          typeof (val as Record<string, unknown>).week_start === 'string'
+        ) {
+          weeks[key] = val as CalendarWeekly
+        }
+      }
     } catch { /* ignore */ }
   }
 

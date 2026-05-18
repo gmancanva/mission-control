@@ -2,6 +2,58 @@
 
 import { useEffect, useRef } from 'react'
 
+/**
+ * Extract a Zoom or Teams meeting URL from a description (HTML or plain text).
+ * Returns the first video-conference URL found, or null.
+ */
+function extractVideoLink(html: string): string | null {
+  // Check <a href="..."> tags first
+  const hrefMatch = html.match(/href=['"]?(https?:\/\/[^\s'"<>]*(?:zoom\.us|teams\.microsoft|meet\.google|webex)[^\s'"<>]*)/i)
+  if (hrefMatch) return hrefMatch[1]
+  // Fall back to plain-text URLs
+  const plainMatch = html.match(/https?:\/\/[^\s<>"']*(?:zoom\.us|teams\.microsoft|meet\.google|webex)[^\s<>"']*/i)
+  if (plainMatch) return plainMatch[0]
+  return null
+}
+
+/**
+ * Sanitize calendar description HTML:
+ * - Remove dangerous tags (script, style, iframe, form)
+ * - Strip inline event handlers
+ * - Ensure all links open in a new tab safely
+ * - Auto-link bare https:// URLs that aren't already inside <a> tags
+ */
+function prepareDescription(html: string): string {
+  let out = html
+  // Remove dangerous tags
+  out = out.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  out = out.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
+  out = out.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
+  out = out.replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, '')
+  out = out.replace(/<input\b[^>]*\/?>/gi, '')
+  // Strip inline event handlers
+  out = out.replace(/\s+on\w+="[^"]*"/gi, '')
+  out = out.replace(/\s+on\w+='[^']*'/gi, '')
+  // Rewrite all <a ...> tags: strip existing target/rel, then add safe values
+  out = out.replace(/<a([^>]*)>/gi, (_, attrs) => {
+    const cleaned = attrs
+      .replace(/\s+target=["'][^"']*["']/gi, '')
+      .replace(/\s+rel=["'][^"']*["']/gi, '')
+    return `<a${cleaned} target="_blank" rel="noopener noreferrer">`
+  })
+  // Auto-link bare URLs that are NOT already inside an <a> tag
+  // Split on existing tags, only process text nodes
+  out = out.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
+    if (tag) return tag  // preserve HTML tags as-is
+    // Linkify https:// URLs in plain text segments
+    return text.replace(
+      /(https?:\/\/[^\s<>"')\]]+)/gi,
+      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
+    )
+  })
+  return out
+}
+
 type MeetingEntry = {
   title: string
   start: string
@@ -247,14 +299,20 @@ export default function CalendarWeekGrid({
               <p className="text-sm text-gray-400">Loading details…</p>
             )}
             {expandedDetails && expandedDetails !== 'loading' && expandedDetails !== 'error' && (() => {
-              const hasDetails = !!(expandedDetails.description || expandedDetails.location || expandedDetails.hangoutLink || expandedDetails.conferenceLink || expandedDetails.attendees.length > 0)
+              // Resolve the best video call link: explicit field first, then extracted from description
+              const explicitVideoLink = expandedDetails.hangoutLink || expandedDetails.conferenceLink
+              const descVideoLink = expandedDetails.description ? extractVideoLink(expandedDetails.description) : null
+              const videoLink = explicitVideoLink || descVideoLink
+              const isZoom = videoLink ? /zoom\.us/i.test(videoLink) : false
+
+              const hasDetails = !!(expandedDetails.description || expandedDetails.location || videoLink || expandedDetails.attendees.length > 0)
               if (!hasDetails) return null
               return (
                 <div className="space-y-2">
                   {expandedDetails.description && (
-                    <p
-                      className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed line-clamp-4"
-                      dangerouslySetInnerHTML={{ __html: expandedDetails.description.replace(/<(?!br\s*\/?)[^>]+>/gi, '') }}
+                    <div
+                      className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed calendar-description relative"
+                      dangerouslySetInnerHTML={{ __html: prepareDescription(expandedDetails.description) }}
                     />
                   )}
                   {expandedDetails.location && (
@@ -266,16 +324,16 @@ export default function CalendarWeekGrid({
                       <span className="truncate">{expandedDetails.location}</span>
                     </div>
                   )}
-                  {(expandedDetails.hangoutLink || expandedDetails.conferenceLink) && (
+                  {videoLink && (
                     <a
-                      href={(expandedDetails.hangoutLink || expandedDetails.conferenceLink)!}
+                      href={videoLink}
                       target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
                     >
                       <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
-                      Join video call
+                      {isZoom ? 'Join Zoom' : 'Join video call'}
                     </a>
                   )}
                   {expandedDetails.attendees.length > 0 && (

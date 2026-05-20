@@ -158,7 +158,7 @@ export default function DashboardPage() {
   const [sourceSyncTimes, setSourceSyncTimes] = useState<Record<string, string>>({})
   const [syncingSources, setSyncingSources] = useState<Set<string>>(new Set())
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
-  const [hoveredTooltip, setHoveredTooltip] = useState<{ key: string; x: number; y: number } | null>(null)
+  const [hoveredTooltip, setHoveredTooltip] = useState<{ key: string; x: number; y: number; h: number } | null>(null)
 
   const [epics, setEpics] = useState<JiraEpic[]>([])
   const [myTickets, setMyTickets] = useState<JiraTicket[]>([])
@@ -519,7 +519,7 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div style={{ padding: '0 8px' }}>
+        <div style={{ marginBottom: 8 }}>
           {/* Source sync panel */}
           <div style={{
             border: '1px solid var(--pdBorder)',
@@ -564,7 +564,7 @@ export default function DashboardPage() {
                       style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}
                       onMouseEnter={(e) => {
                         const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                        setHoveredTooltip({ key, x: r.right, y: r.top })
+                        setHoveredTooltip({ key, x: r.right, y: r.top, h: r.height })
                       }}
                       onMouseLeave={() => setHoveredTooltip(null)}
                     >
@@ -812,8 +812,9 @@ export default function DashboardPage() {
       {hoveredTooltip && (
         <div style={{
           position: 'fixed',
-          left: hoveredTooltip.x + 8,
-          top: hoveredTooltip.y - 4,
+          left: hoveredTooltip.x + 10,
+          top: hoveredTooltip.y + hoveredTooltip.h / 2,
+          transform: 'translateY(-50%)',
           background: '#1a1a1a',
           color: '#fff',
           fontSize: 11, lineHeight: 1.5, fontWeight: 400,
@@ -821,15 +822,15 @@ export default function DashboardPage() {
           width: 200, whiteSpace: 'normal',
           pointerEvents: 'none', zIndex: 9999,
           boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
-          transform: 'translateY(-100%)',
         }}>
           Can only sync via Claude&apos;s MCP tools. Click to copy a prompt to paste into Claude Code.
           <div style={{
-            position: 'absolute', top: '100%', left: 12,
+            position: 'absolute', top: '50%', left: -5,
+            transform: 'translateY(-50%)',
             width: 0, height: 0,
-            borderLeft: '5px solid transparent',
-            borderRight: '5px solid transparent',
-            borderTop: '5px solid #1a1a1a',
+            borderTop: '5px solid transparent',
+            borderBottom: '5px solid transparent',
+            borderRight: '5px solid #1a1a1a',
           }} />
         </div>
       )}

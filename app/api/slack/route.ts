@@ -91,9 +91,11 @@ export async function GET(request: NextRequest) {
     // Fall back to disk cache (written by live fetch or by MCP-based sync)
     if (fs.existsSync(CACHE_PATH)) {
       const raw = fs.readFileSync(CACHE_PATH, 'utf-8')
-      const data = JSON.parse(raw) as { synced_at: string; messages: SlackMessage[] }
+      const data = JSON.parse(raw) as { synced_at?: string; messages: SlackMessage[] }
       const enriched = await resolveUsers(data.messages)
-      return NextResponse.json({ messages: enriched, synced_at: data.synced_at })
+      // Fall back to file mtime if the cache predates the synced_at field
+      const syncedAt = data.synced_at ?? fs.statSync(CACHE_PATH).mtime.toISOString()
+      return NextResponse.json({ messages: enriched, synced_at: syncedAt })
     }
 
     return NextResponse.json({ messages: [] })

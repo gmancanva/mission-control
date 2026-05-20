@@ -82,7 +82,14 @@ export async function GET() {
   if (Object.keys(weeks).length === 0) {
     return NextResponse.json({ available: false })
   }
-  return NextResponse.json({ available: true, weeks })
+  // Surface the most-recent synced_at across all cached weeks so the sidebar
+  // freshness indicator can show when calendar data was last updated
+  const syncedAt = Object.values(weeks)
+    .map(w => w.synced_at)
+    .filter(Boolean)
+    .sort()
+    .at(-1) ?? null
+  return NextResponse.json({ available: true, weeks, synced_at: syncedAt })
 }
 
 // POST — sync current week from Google Calendar OAuth and write to cache

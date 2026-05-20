@@ -213,12 +213,13 @@ export default function DashboardPage() {
   const fetchAll = useCallback(async (bust = false) => {
     try {
       const qs = bust ? '?bust=1' : ''
-      const [jiraRes, slackRes, exportRes, canvaRes, figmaRes] = await Promise.all([
+      const [jiraRes, slackRes, exportRes, canvaRes, figmaRes, calendarRes] = await Promise.all([
         fetch(`/api/jira${qs}`),
         fetch(`/api/slack${qs}`),
         fetch('/api/export'),
         fetch('/api/canva'),
         fetch(`/api/figma${qs}`),
+        fetch('/api/calendar/weekly'),
       ])
 
       const newSyncTimes: Record<string, string> = {}
@@ -252,6 +253,11 @@ export default function DashboardPage() {
         const figmaData = await figmaRes.json() as { available: boolean; mentions?: FigmaMention[]; synced_at?: string }
         setFigmaMentions(figmaData.mentions ?? [])
         if (figmaData.synced_at) newSyncTimes.figma = figmaData.synced_at
+      }
+
+      if (calendarRes.ok) {
+        const calendarData = await calendarRes.json() as { available: boolean; synced_at?: string }
+        if (calendarData.available && calendarData.synced_at) newSyncTimes.calendar = calendarData.synced_at
       }
 
       setSourceSyncTimes(prev => ({ ...prev, ...newSyncTimes }))
@@ -357,6 +363,15 @@ export default function DashboardPage() {
         setCanvaMentions(d.mentions ?? [])
         if (d.synced_at) newSyncTimes.canva = d.synced_at
       }
+
+      // Fetch calendar synced_at after POST (re-read the cache to get the updated timestamp)
+      try {
+        const calendarGetRes = await fetch('/api/calendar/weekly')
+        if (calendarGetRes.ok) {
+          const calendarGetData = await calendarGetRes.json() as { available: boolean; synced_at?: string }
+          if (calendarGetData.available && calendarGetData.synced_at) newSyncTimes.calendar = calendarGetData.synced_at
+        }
+      } catch { /* best-effort */ }
 
       setSourceSyncTimes(prev => ({ ...prev, ...newSyncTimes }))
       // Always bump calendar key — renders fresh from cache even if POST failed
@@ -508,6 +523,7 @@ export default function DashboardPage() {
               {([
                 { key: 'jira', label: 'Jira' },
                 { key: 'slack', label: 'Slack' },
+                { key: 'calendar', label: 'Calendar' },
                 { key: 'canva', label: 'Canva' },
                 { key: 'figma', label: 'Figma' },
               ] as { key: string; label: string }[]).map(({ key, label }) => {

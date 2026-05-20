@@ -535,10 +535,10 @@ export default function DashboardPage() {
             )}
             {([
               { key: 'jira', label: 'Jira', mcp: false },
-              { key: 'slack', label: 'Slack', mcp: true },
-              { key: 'calendar', label: 'Calendar', mcp: true },
               { key: 'canva', label: 'Canva', mcp: false },
               { key: 'figma', label: 'Figma', mcp: false },
+              { key: 'slack', label: 'Slack', mcp: true },
+              { key: 'calendar', label: 'Calendar', mcp: true },
             ] as { key: string; label: string; mcp: boolean }[]).map(({ key, label, mcp }) => {
               const ts = sourceSyncTimes[key]
               const ageStr = ts ? (() => {

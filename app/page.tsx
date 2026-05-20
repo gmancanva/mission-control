@@ -520,142 +520,102 @@ export default function DashboardPage() {
         )}
 
         <div style={{ padding: '0 8px' }}>
-          <button
-            onClick={handleSync}
-            disabled={syncing}
-            style={{
-              width: '100%',
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-              padding: '8px 10px', borderRadius: 8,
-              border: '1px solid var(--pdBorder)',
-              background: 'var(--pdSurface1)',
-              cursor: syncing ? 'default' : 'pointer',
-              opacity: syncing ? 0.7 : 1,
-              gap: 6,
-              transition: 'opacity 0.15s',
-            }}
-          >
-            <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 500, color: 'var(--pdTextPrimary)' }}>
-              <SyncIcon spinning={syncing} />
-              {syncing ? 'Syncing…' : 'Sync now'}
-            </span>
-            {lastSyncedAt && !syncing && (
-              <span style={{
-                fontSize: 10, fontWeight: 500,
-                color: 'var(--pdTextMuted)',
-                background: 'var(--pdSurface0)',
-                border: '1px solid var(--pdBorder)',
-                borderRadius: 100,
-                padding: '2px 7px',
-                letterSpacing: '0.01em',
-                whiteSpace: 'nowrap',
-              }}>
-                {(() => {
-                  const mins = Math.round((Date.now() - lastSyncedAt.getTime()) / 60000)
-                  return mins < 1 ? 'just now' : `${mins}m ago`
-                })()}
-              </span>
+          {/* Source sync panel */}
+          <div style={{
+            border: '1px solid var(--pdBorder)',
+            borderRadius: 8,
+            background: 'var(--pdSurface1)',
+            padding: '6px 10px',
+            display: 'flex', flexDirection: 'column', gap: 2,
+          }}>
+            {syncing && (
+              <p style={{ fontSize: 11, color: 'var(--pdTextMuted)', textAlign: 'center', margin: '2px 0', transition: 'opacity 0.3s' }}>
+                {SYNC_STATUSES[syncStatusIdx]}
+              </p>
             )}
-          </button>
-          {syncing && (
-            <p style={{
-              fontSize: 11, color: 'var(--pdTextMuted)',
-              textAlign: 'center', marginTop: 6,
-              transition: 'opacity 0.3s',
-            }}>
-              {SYNC_STATUSES[syncStatusIdx]}
-            </p>
-          )}
-
-          {/* Source freshness indicators */}
-          {!syncing && Object.keys(sourceSyncTimes).length > 0 && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {([
-                { key: 'jira', label: 'Jira', mcp: false },
-                { key: 'slack', label: 'Slack', mcp: true },
-                { key: 'calendar', label: 'Calendar', mcp: true },
-                { key: 'canva', label: 'Canva', mcp: false },
-                { key: 'figma', label: 'Figma', mcp: false },
-              ] as { key: string; label: string; mcp: boolean }[]).map(({ key, label, mcp }) => {
-                const ts = sourceSyncTimes[key]
-                if (!ts) return null
+            {([
+              { key: 'jira', label: 'Jira', mcp: false },
+              { key: 'slack', label: 'Slack', mcp: true },
+              { key: 'calendar', label: 'Calendar', mcp: true },
+              { key: 'canva', label: 'Canva', mcp: false },
+              { key: 'figma', label: 'Figma', mcp: false },
+            ] as { key: string; label: string; mcp: boolean }[]).map(({ key, label, mcp }) => {
+              const ts = sourceSyncTimes[key]
+              const ageStr = ts ? (() => {
                 const ageMs = Date.now() - new Date(ts).getTime()
                 const ageMin = Math.floor(ageMs / 60000)
                 const ageHr = Math.floor(ageMin / 60)
                 const ageDays = Math.floor(ageHr / 24)
-                const ageStr = ageDays > 0 ? `${ageDays}d ago` : ageHr > 0 ? `${ageHr}h ago` : ageMin < 1 ? 'just now' : `${ageMin}m ago`
-                const stale = ageDays >= 1
-                const isSyncing = syncingSources.has(key)
-                const isCopied = copiedPrompt === key
-                return (
-                  <div key={key} style={{
-                    display: 'flex', alignItems: 'center', gap: 4,
-                    padding: '2px 2px', borderRadius: 5,
-                  }}>
-                    <span style={{ fontSize: 11, color: 'var(--pdTextMuted)', flex: 1, minWidth: 0 }}>{label}</span>
-                    <span style={{
-                      fontSize: 10, fontWeight: 500, flexShrink: 0,
-                      color: stale ? '#f59e0b' : 'var(--pdTextMuted)',
-                    }}>{ageStr}</span>
-                    {mcp ? (
-                      <div
-                        style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}
-                        onMouseEnter={(e) => {
-                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-                          setHoveredTooltip({ key, x: r.right, y: r.top })
-                        }}
-                        onMouseLeave={() => setHoveredTooltip(null)}
-                      >
-                        <button
-                          onClick={() => copyMcpPrompt(key)}
-                          style={{
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            width: 20, height: 20, borderRadius: 4, border: '1px solid var(--pdBorder)',
-                            background: isCopied ? '#16a34a' : 'var(--pdSurface0)',
-                            cursor: 'pointer', padding: 0, flexShrink: 0,
-                            transition: 'background 0.15s',
-                          }}
-                        >
-                          {isCopied ? (
-                            <svg viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10 }}>
-                              <path d="M2 6l2.5 2.5L10 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          ) : (
-                            <svg viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10 }}>
-                              <rect x="4" y="1" width="7" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                              <path d="M1 4h2v6h5v1H1V4z" fill="currentColor" opacity="0.5"/>
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    ) : (
+                return ageDays > 0 ? `${ageDays}d ago` : ageHr > 0 ? `${ageHr}h ago` : ageMin < 1 ? 'just now' : `${ageMin}m ago`
+              })() : null
+              const stale = ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) >= 1 : false
+              const isSyncing = syncingSources.has(key) || (syncing && !mcp)
+              const isCopied = copiedPrompt === key
+              return (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
+                  <span style={{ fontSize: 12, color: 'var(--pdTextMuted)', flex: 1, minWidth: 0 }}>{label}</span>
+                  {ageStr && (
+                    <span style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: stale ? '#f59e0b' : 'var(--pdTextMuted)' }}>
+                      {ageStr}
+                    </span>
+                  )}
+                  {mcp ? (
+                    <div
+                      style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}
+                      onMouseEnter={(e) => {
+                        const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                        setHoveredTooltip({ key, x: r.right, y: r.top })
+                      }}
+                      onMouseLeave={() => setHoveredTooltip(null)}
+                    >
                       <button
-                        onClick={() => syncSource(key)}
-                        disabled={isSyncing}
-                        title={`Sync ${label}`}
+                        onClick={() => copyMcpPrompt(key)}
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          width: 20, height: 20, borderRadius: 4, border: '1px solid var(--pdBorder)',
-                          background: 'var(--pdSurface0)', cursor: isSyncing ? 'default' : 'pointer',
-                          padding: 0, flexShrink: 0, opacity: isSyncing ? 0.5 : 1,
+                          width: 26, height: 26, borderRadius: 6, border: '1px solid var(--pdBorder)',
+                          background: isCopied ? '#16a34a' : 'var(--pdSurface0)',
+                          cursor: 'pointer', padding: 0, flexShrink: 0,
+                          transition: 'background 0.15s',
                         }}
                       >
-                        <svg
-                          viewBox="0 0 12 12" fill="none"
-                          style={{ width: 10, height: 10, ...(isSyncing ? { animation: 'spin 1s linear infinite' } : {}) }}
-                        >
-                          <path d="M2 2.5v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M10 9.5v-3H7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M9.5 4.5A4 4 0 0 0 2.5 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                          <path d="M2.5 7.5A4 4 0 0 0 9.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                        </svg>
+                        {isCopied ? (
+                          <svg viewBox="0 0 12 12" fill="none" style={{ width: 12, height: 12 }}>
+                            <path d="M2 6l2.5 2.5L10 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        ) : (
+                          <svg viewBox="0 0 12 12" fill="none" style={{ width: 12, height: 12 }}>
+                            <rect x="4" y="1" width="7" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                            <path d="M1 4h2v6h5v1H1V4z" fill="currentColor" opacity="0.5"/>
+                          </svg>
+                        )}
                       </button>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => syncSource(key)}
+                      disabled={isSyncing}
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 26, height: 26, borderRadius: 6, border: '1px solid var(--pdBorder)',
+                        background: 'var(--pdSurface0)', cursor: isSyncing ? 'default' : 'pointer',
+                        padding: 0, flexShrink: 0, opacity: isSyncing ? 0.5 : 1,
+                      }}
+                    >
+                      <svg
+                        viewBox="0 0 12 12" fill="none"
+                        style={{ width: 12, height: 12, ...(isSyncing ? { animation: 'spin 1s linear infinite' } : {}) }}
+                      >
+                        <path d="M2 2.5v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10 9.5v-3H7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9.5 4.5A4 4 0 0 0 2.5 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                        <path d="M2.5 7.5A4 4 0 0 0 9.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
         <button
           className={`PdNavItem${activeView === 'settings' ? ' is-selected' : ''}`}

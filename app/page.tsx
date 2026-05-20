@@ -158,6 +158,7 @@ export default function DashboardPage() {
   const [sourceSyncTimes, setSourceSyncTimes] = useState<Record<string, string>>({})
   const [syncingSources, setSyncingSources] = useState<Set<string>>(new Set())
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
+  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null)
 
   const [epics, setEpics] = useState<JiraEpic[]>([])
   const [myTickets, setMyTickets] = useState<JiraTicket[]>([])
@@ -597,10 +598,13 @@ export default function DashboardPage() {
                       color: stale ? '#f59e0b' : 'var(--pdTextMuted)',
                     }}>{ageStr}</span>
                     {mcp ? (
-                      <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                      <div
+                        style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}
+                        onMouseEnter={() => setHoveredTooltip(key)}
+                        onMouseLeave={() => setHoveredTooltip(null)}
+                      >
                         <button
                           onClick={() => copyMcpPrompt(key)}
-                          title="Requires Claude — click to copy a sync prompt you can paste into Claude Code"
                           style={{
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             width: 20, height: 20, borderRadius: 4, border: '1px solid var(--pdBorder)',
@@ -620,6 +624,24 @@ export default function DashboardPage() {
                             </svg>
                           )}
                         </button>
+                        {hoveredTooltip === key && (
+                          <div style={{
+                            position: 'absolute', bottom: '100%', right: 0, marginBottom: 6,
+                            background: 'var(--pdTextPrimary)', color: 'var(--pdSurface0)',
+                            fontSize: 11, lineHeight: 1.4, fontWeight: 400,
+                            padding: '6px 8px', borderRadius: 6,
+                            width: 190, whiteSpace: 'normal', pointerEvents: 'none',
+                            zIndex: 100,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                          }}>
+                            Can only sync via Claude&apos;s MCP tools. Click to copy a prompt you can paste into Claude Code.
+                            <div style={{
+                              position: 'absolute', bottom: -4, right: 6,
+                              width: 8, height: 8, background: 'var(--pdTextPrimary)',
+                              transform: 'rotate(45deg)', borderRadius: 1,
+                            }} />
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <button

@@ -156,6 +156,8 @@ export default function DashboardPage() {
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [calendarSyncKey, setCalendarSyncKey] = useState(0)
   const [sourceSyncTimes, setSourceSyncTimes] = useState<Record<string, string>>({})
+  const [syncingSources, setSyncingSources] = useState<Set<string>>(new Set())
+  const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
 
   const [epics, setEpics] = useState<JiraEpic[]>([])
   const [myTickets, setMyTickets] = useState<JiraTicket[]>([])
@@ -390,6 +392,53 @@ export default function DashboardPage() {
       .catch(() => { /* best-effort */ })
   }
 
+  async function syncSource(key: string) {
+    setSyncingSources(prev => new Set([...prev, key]))
+    try {
+      if (key === 'jira') {
+        const res = await fetch('/api/jira?bust=1')
+        if (res.ok) {
+          const d = await res.json() as { epics: JiraEpic[]; myTickets: JiraTicket[]; projectKeys: string[]; synced_at?: string }
+          setEpics(d.epics ?? []); setMyTickets(d.myTickets ?? []); setProjectKeys(d.projectKeys ?? [])
+          if (d.synced_at) setSourceSyncTimes(prev => ({ ...prev, jira: d.synced_at! }))
+        }
+      } else if (key === 'canva') {
+        const res = await fetch('/api/canva/sync')
+        if (res.ok) {
+          const d = await res.json() as { mentions?: CanvaMention[]; synced_at?: string }
+          if (d.mentions) setCanvaMentions(d.mentions)
+          // Re-read cache for updated timestamp
+          const cacheRes = await fetch('/api/canva')
+          if (cacheRes.ok) {
+            const cd = await cacheRes.json() as { mentions?: CanvaMention[]; synced_at?: string }
+            if (cd.synced_at) setSourceSyncTimes(prev => ({ ...prev, canva: cd.synced_at! }))
+          }
+        }
+      } else if (key === 'figma') {
+        const res = await fetch('/api/figma?bust=1')
+        if (res.ok) {
+          const d = await res.json() as { available: boolean; mentions?: FigmaMention[]; synced_at?: string }
+          if (d.mentions) setFigmaMentions(d.mentions)
+          if (d.synced_at) setSourceSyncTimes(prev => ({ ...prev, figma: d.synced_at! }))
+        }
+      }
+    } finally {
+      setSyncingSources(prev => { const s = new Set(prev); s.delete(key); return s })
+    }
+  }
+
+  function copyMcpPrompt(key: string) {
+    const prompts: Record<string, string> = {
+      slack: 'Sync my Slack mentions in Mission Control — use the Slack MCP tool to search for messages mentioning me in the last 14 days and update the cache at data/slack-mentions-cache.json',
+      calendar: 'Sync my Google Calendar in Mission Control — use the Google Calendar MCP tool to fetch this week and next week\'s events and update the calendar cache',
+    }
+    const prompt = prompts[key]
+    if (!prompt) return
+    navigator.clipboard.writeText(prompt).catch(() => {})
+    setCopiedPrompt(key)
+    setTimeout(() => setCopiedPrompt(null), 2000)
+  }
+
   async function refreshPins() {
     const exportRes = await fetch('/api/export')
     if (exportRes.ok) {
@@ -519,14 +568,14 @@ export default function DashboardPage() {
 
           {/* Source freshness indicators */}
           {!syncing && Object.keys(sourceSyncTimes).length > 0 && (
-            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 1 }}>
               {([
-                { key: 'jira', label: 'Jira' },
-                { key: 'slack', label: 'Slack' },
-                { key: 'calendar', label: 'Calendar' },
-                { key: 'canva', label: 'Canva' },
-                { key: 'figma', label: 'Figma' },
-              ] as { key: string; label: string }[]).map(({ key, label }) => {
+                { key: 'jira', label: 'Jira', mcp: false },
+                { key: 'slack', label: 'Slack', mcp: true },
+                { key: 'calendar', label: 'Calendar', mcp: true },
+                { key: 'canva', label: 'Canva', mcp: false },
+                { key: 'figma', label: 'Figma', mcp: false },
+              ] as { key: string; label: string; mcp: boolean }[]).map(({ key, label, mcp }) => {
                 const ts = sourceSyncTimes[key]
                 if (!ts) return null
                 const ageMs = Date.now() - new Date(ts).getTime()
@@ -535,16 +584,66 @@ export default function DashboardPage() {
                 const ageDays = Math.floor(ageHr / 24)
                 const ageStr = ageDays > 0 ? `${ageDays}d ago` : ageHr > 0 ? `${ageHr}h ago` : ageMin < 1 ? 'just now' : `${ageMin}m ago`
                 const stale = ageDays >= 1
+                const isSyncing = syncingSources.has(key)
+                const isCopied = copiedPrompt === key
                 return (
                   <div key={key} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '2px 4px', borderRadius: 5,
+                    display: 'flex', alignItems: 'center', gap: 4,
+                    padding: '2px 2px', borderRadius: 5,
                   }}>
-                    <span style={{ fontSize: 11, color: 'var(--pdTextMuted)' }}>{label}</span>
+                    <span style={{ fontSize: 11, color: 'var(--pdTextMuted)', flex: 1, minWidth: 0 }}>{label}</span>
                     <span style={{
-                      fontSize: 10, fontWeight: 500,
+                      fontSize: 10, fontWeight: 500, flexShrink: 0,
                       color: stale ? '#f59e0b' : 'var(--pdTextMuted)',
                     }}>{ageStr}</span>
+                    {mcp ? (
+                      <div style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}>
+                        <button
+                          onClick={() => copyMcpPrompt(key)}
+                          title="Requires Claude — click to copy a sync prompt you can paste into Claude Code"
+                          style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            width: 20, height: 20, borderRadius: 4, border: '1px solid var(--pdBorder)',
+                            background: isCopied ? '#16a34a' : 'var(--pdSurface0)',
+                            cursor: 'pointer', padding: 0, flexShrink: 0,
+                            transition: 'background 0.15s',
+                          }}
+                        >
+                          {isCopied ? (
+                            <svg viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10 }}>
+                              <path d="M2 6l2.5 2.5L10 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 12 12" fill="none" style={{ width: 10, height: 10 }}>
+                              <rect x="4" y="1" width="7" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
+                              <path d="M1 4h2v6h5v1H1V4z" fill="currentColor" opacity="0.5"/>
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => syncSource(key)}
+                        disabled={isSyncing}
+                        title={`Sync ${label}`}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: 20, height: 20, borderRadius: 4, border: '1px solid var(--pdBorder)',
+                          background: 'var(--pdSurface0)', cursor: isSyncing ? 'default' : 'pointer',
+                          padding: 0, flexShrink: 0, opacity: isSyncing ? 0.5 : 1,
+                        }}
+                      >
+                        <svg
+                          viewBox="0 0 12 12" fill="none"
+                          style={{ width: 10, height: 10, ...(isSyncing ? { animation: 'spin 1s linear infinite' } : {}) }}
+                        >
+                          <path d="M2 2.5v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M10 9.5v-3H7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M9.5 4.5A4 4 0 0 0 2.5 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                          <path d="M2.5 7.5A4 4 0 0 0 9.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 )
               })}

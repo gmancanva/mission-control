@@ -158,7 +158,7 @@ export default function DashboardPage() {
   const [sourceSyncTimes, setSourceSyncTimes] = useState<Record<string, string>>({})
   const [syncingSources, setSyncingSources] = useState<Set<string>>(new Set())
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
-  const [hoveredTooltip, setHoveredTooltip] = useState<string | null>(null)
+  const [hoveredTooltip, setHoveredTooltip] = useState<{ key: string; x: number; y: number } | null>(null)
 
   const [epics, setEpics] = useState<JiraEpic[]>([])
   const [myTickets, setMyTickets] = useState<JiraTicket[]>([])
@@ -600,7 +600,10 @@ export default function DashboardPage() {
                     {mcp ? (
                       <div
                         style={{ position: 'relative', display: 'inline-flex', flexShrink: 0 }}
-                        onMouseEnter={() => setHoveredTooltip(key)}
+                        onMouseEnter={(e) => {
+                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                          setHoveredTooltip({ key, x: r.right, y: r.top })
+                        }}
                         onMouseLeave={() => setHoveredTooltip(null)}
                       >
                         <button
@@ -624,24 +627,6 @@ export default function DashboardPage() {
                             </svg>
                           )}
                         </button>
-                        {hoveredTooltip === key && (
-                          <div style={{
-                            position: 'absolute', bottom: '100%', right: 0, marginBottom: 6,
-                            background: 'var(--pdTextPrimary)', color: 'var(--pdSurface0)',
-                            fontSize: 11, lineHeight: 1.4, fontWeight: 400,
-                            padding: '6px 8px', borderRadius: 6,
-                            width: 190, whiteSpace: 'normal', pointerEvents: 'none',
-                            zIndex: 100,
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                          }}>
-                            Can only sync via Claude&apos;s MCP tools. Click to copy a prompt you can paste into Claude Code.
-                            <div style={{
-                              position: 'absolute', bottom: -4, right: 6,
-                              width: 8, height: 8, background: 'var(--pdTextPrimary)',
-                              transform: 'rotate(45deg)', borderRadius: 1,
-                            }} />
-                          </div>
-                        )}
                       </div>
                     ) : (
                       <button
@@ -862,6 +847,32 @@ export default function DashboardPage() {
           refreshJira()
         }}
       />
+
+      {/* ── MCP tooltip — rendered at root to escape sidebar overflow ── */}
+      {hoveredTooltip && (
+        <div style={{
+          position: 'fixed',
+          left: hoveredTooltip.x + 8,
+          top: hoveredTooltip.y - 4,
+          background: '#1a1a1a',
+          color: '#fff',
+          fontSize: 11, lineHeight: 1.5, fontWeight: 400,
+          padding: '7px 10px', borderRadius: 7,
+          width: 200, whiteSpace: 'normal',
+          pointerEvents: 'none', zIndex: 9999,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+          transform: 'translateY(-100%)',
+        }}>
+          Can only sync via Claude&apos;s MCP tools. Click to copy a prompt to paste into Claude Code.
+          <div style={{
+            position: 'absolute', top: '100%', left: 12,
+            width: 0, height: 0,
+            borderLeft: '5px solid transparent',
+            borderRight: '5px solid transparent',
+            borderTop: '5px solid #1a1a1a',
+          }} />
+        </div>
+      )}
 
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }

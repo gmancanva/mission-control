@@ -155,6 +155,7 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [calendarSyncKey, setCalendarSyncKey] = useState(0)
+  const [sourceSyncTimes, setSourceSyncTimes] = useState<Record<string, string>>({})
 
   const [epics, setEpics] = useState<JiraEpic[]>([])
   const [myTickets, setMyTickets] = useState<JiraTicket[]>([])
@@ -220,16 +221,20 @@ export default function DashboardPage() {
         fetch(`/api/figma${qs}`),
       ])
 
+      const newSyncTimes: Record<string, string> = {}
+
       if (jiraRes.ok) {
-        const jiraData = await jiraRes.json() as { epics: JiraEpic[]; myTickets: JiraTicket[]; projectKeys: string[] }
+        const jiraData = await jiraRes.json() as { epics: JiraEpic[]; myTickets: JiraTicket[]; projectKeys: string[]; synced_at?: string }
         setEpics(jiraData.epics ?? [])
         setMyTickets(jiraData.myTickets ?? [])
         setProjectKeys(jiraData.projectKeys ?? [])
+        if (jiraData.synced_at) newSyncTimes.jira = jiraData.synced_at
       }
 
       if (slackRes.ok) {
-        const slackData = await slackRes.json() as { messages: SlackMessage[] }
+        const slackData = await slackRes.json() as { messages: SlackMessage[]; synced_at?: string }
         setSlackMessages(slackData.messages ?? [])
+        if (slackData.synced_at) newSyncTimes.slack = slackData.synced_at
       }
 
       if (exportRes.ok) {
@@ -238,15 +243,18 @@ export default function DashboardPage() {
       }
 
       if (canvaRes.ok) {
-        const canvaData = await canvaRes.json() as { available: boolean; mentions?: CanvaMention[] }
+        const canvaData = await canvaRes.json() as { available: boolean; mentions?: CanvaMention[]; synced_at?: string }
         setCanvaMentions(canvaData.mentions ?? [])
+        if (canvaData.synced_at) newSyncTimes.canva = canvaData.synced_at
       }
 
       if (figmaRes.ok) {
-        const figmaData = await figmaRes.json() as { available: boolean; mentions?: FigmaMention[] }
+        const figmaData = await figmaRes.json() as { available: boolean; mentions?: FigmaMention[]; synced_at?: string }
         setFigmaMentions(figmaData.mentions ?? [])
+        if (figmaData.synced_at) newSyncTimes.figma = figmaData.synced_at
       }
 
+      setSourceSyncTimes(prev => ({ ...prev, ...newSyncTimes }))
       setLastSyncedAt(new Date())
       setError(null)
     } catch (err) {
@@ -315,15 +323,45 @@ export default function DashboardPage() {
   async function handleSync() {
     setSyncing(true)
     try {
-      // Jira + Slack + Calendar in parallel — all complete in a few seconds
-      const [, calRes] = await Promise.allSettled([
-        fetchAll(true),
+      // Bust Jira only — Slack/Figma/Canva read from disk cache (bot not in channels;
+      // busting Slack causes it to re-poll 26 channels via API which takes ages)
+      const [jiraRes, slackRes, figmaRes, canvaRes] = await Promise.allSettled([
+        fetch('/api/jira?bust=1'),
+        fetch('/api/slack'),        // no bust — reads disk cache written by MCP sync
+        fetch('/api/figma'),        // no bust — reads disk cache
+        fetch('/api/canva'),        // no bust — reads disk cache
         fetch('/api/calendar/weekly', { method: 'POST' }),
       ])
 
-      // Always re-fetch calendar from cache — even if the POST failed (no Google OAuth),
-      // the cache may have been updated externally (e.g. by MCP tools)
+      const newSyncTimes: Record<string, string> = {}
+
+      if (jiraRes.status === 'fulfilled' && jiraRes.value.ok) {
+        const d = await jiraRes.value.json() as { epics: JiraEpic[]; myTickets: JiraTicket[]; projectKeys: string[]; synced_at?: string }
+        setEpics(d.epics ?? [])
+        setMyTickets(d.myTickets ?? [])
+        setProjectKeys(d.projectKeys ?? [])
+        if (d.synced_at) newSyncTimes.jira = d.synced_at
+      }
+      if (slackRes.status === 'fulfilled' && slackRes.value.ok) {
+        const d = await slackRes.value.json() as { messages: SlackMessage[]; synced_at?: string }
+        setSlackMessages(d.messages ?? [])
+        if (d.synced_at) newSyncTimes.slack = d.synced_at
+      }
+      if (figmaRes.status === 'fulfilled' && figmaRes.value.ok) {
+        const d = await figmaRes.value.json() as { available: boolean; mentions?: FigmaMention[]; synced_at?: string }
+        setFigmaMentions(d.mentions ?? [])
+        if (d.synced_at) newSyncTimes.figma = d.synced_at
+      }
+      if (canvaRes.status === 'fulfilled' && canvaRes.value.ok) {
+        const d = await canvaRes.value.json() as { available: boolean; mentions?: CanvaMention[]; synced_at?: string }
+        setCanvaMentions(d.mentions ?? [])
+        if (d.synced_at) newSyncTimes.canva = d.synced_at
+      }
+
+      setSourceSyncTimes(prev => ({ ...prev, ...newSyncTimes }))
+      // Always bump calendar key — renders fresh from cache even if POST failed
       setCalendarSyncKey(k => k + 1)
+      setLastSyncedAt(new Date())
     } finally {
       setSyncing(false)
     }
@@ -462,6 +500,39 @@ export default function DashboardPage() {
             }}>
               {SYNC_STATUSES[syncStatusIdx]}
             </p>
+          )}
+
+          {/* Source freshness indicators */}
+          {!syncing && Object.keys(sourceSyncTimes).length > 0 && (
+            <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {([
+                { key: 'jira', label: 'Jira' },
+                { key: 'slack', label: 'Slack' },
+                { key: 'canva', label: 'Canva' },
+                { key: 'figma', label: 'Figma' },
+              ] as { key: string; label: string }[]).map(({ key, label }) => {
+                const ts = sourceSyncTimes[key]
+                if (!ts) return null
+                const ageMs = Date.now() - new Date(ts).getTime()
+                const ageMin = Math.floor(ageMs / 60000)
+                const ageHr = Math.floor(ageMin / 60)
+                const ageDays = Math.floor(ageHr / 24)
+                const ageStr = ageDays > 0 ? `${ageDays}d ago` : ageHr > 0 ? `${ageHr}h ago` : ageMin < 1 ? 'just now' : `${ageMin}m ago`
+                const stale = ageDays >= 1
+                return (
+                  <div key={key} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '2px 4px', borderRadius: 5,
+                  }}>
+                    <span style={{ fontSize: 11, color: 'var(--pdTextMuted)' }}>{label}</span>
+                    <span style={{
+                      fontSize: 10, fontWeight: 500,
+                      color: stale ? '#f59e0b' : 'var(--pdTextMuted)',
+                    }}>{ageStr}</span>
+                  </div>
+                )
+              })}
+            </div>
           )}
         </div>
         <button
@@ -645,7 +716,14 @@ export default function DashboardPage() {
         defaultTab={createModalTab}
         defaultSprint={createModalSprint}
         defaultProjectKey={createModalProjectKey}
-        onCreated={refreshJira}
+        onCreated={(newTickets) => {
+          // Optimistically add new tickets to the board immediately
+          if (newTickets?.length) {
+            setMyTickets(prev => [...newTickets.map(t => ({ ...t, id: t.key })), ...prev])
+          }
+          // Then background-refresh from Jira to get full canonical data
+          refreshJira()
+        }}
       />
 
       <style>{`

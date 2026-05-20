@@ -55,7 +55,7 @@ type Props = {
   defaultTab?: 'template' | 'manual'
   defaultSprint?: SprintOption
   defaultProjectKey?: string   // pre-select a project (e.g. from the active kanban filter)
-  onCreated?: () => void
+  onCreated?: (newTickets?: Array<{ key: string; summary: string; project: string; status: string; statusCategoryKey: string; priority: string; parentKey: string | null; parentSummary: string | null; dueDate: string | null }>) => void
   initialSummary?: string
 }
 
@@ -424,7 +424,18 @@ export default function TemplateTaskModal({
 
       const epicLabel = epicKey ? ` under ${epicKey}` : ''
       setToast(`${data.created.length} task${data.created.length === 1 ? '' : 's'} added to ${projectKey}${epicLabel}`)
-      onCreated?.()
+      const optimisticTickets = data.created.map(t => ({
+        key: t.key,
+        summary: t.summary,
+        project: projectKey,
+        status: shared.initialStatus || 'Backlog',
+        statusCategoryKey: (!shared.initialStatus || shared.initialStatus === 'Backlog') ? 'new' : 'indeterminate',
+        priority: shared.priority || 'Nice to have',
+        parentKey: epicKey || null,
+        parentSummary: null,
+        dueDate: shared.dueDate || null,
+      }))
+      onCreated?.(optimisticTickets)
       onClose()
     } catch (err) {
       setFailedTickets([{ summary: 'Batch create', error: err instanceof Error ? err.message : 'Unknown error' }])
@@ -480,7 +491,17 @@ export default function TemplateTaskModal({
         }))
       }
 
-      onCreated?.()
+      onCreated?.(issueKey ? [{
+        key: issueKey,
+        summary: manualForm.summary.trim(),
+        project: manualForm.projectKey,
+        status: manualForm.initialStatus || 'Backlog',
+        statusCategoryKey: (!manualForm.initialStatus || manualForm.initialStatus === 'Backlog') ? 'new' : 'indeterminate',
+        priority: manualForm.priority || 'Nice to have',
+        parentKey: manualForm.epicKey || null,
+        parentSummary: null,
+        dueDate: manualForm.dueDate || null,
+      }] : undefined)
       onClose()
     } catch (err) {
       setManualError(err instanceof Error ? err.message : 'Failed to create task')

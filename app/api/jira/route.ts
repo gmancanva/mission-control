@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       fetchMyTickets(),
     ])
 
-    return NextResponse.json({ epics, myTickets, projectKeys: getProjectKeys() })
+    return NextResponse.json({ epics, myTickets, projectKeys: getProjectKeys(), synced_at: new Date().toISOString() })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'
     console.error('[/api/jira GET]', message)

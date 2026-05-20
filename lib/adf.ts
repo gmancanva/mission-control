@@ -119,5 +119,27 @@ export function htmlToAdf(html: string): unknown | null {
     })
 
   if (!content.length) return null
-  return { version: 1, type: 'doc', content }
+
+  // ADF requires all top-level nodes to be block nodes (paragraph, heading, etc.)
+  // Wrap any orphaned inline nodes (text, hardBreak) in a paragraph
+  const blockContent: AdfNode[] = []
+  let pendingInline: AdfNode[] = []
+
+  for (const node of content) {
+    const isInline = node.type === 'text' || node.type === 'hardBreak'
+    if (isInline) {
+      pendingInline.push(node)
+    } else {
+      if (pendingInline.length) {
+        blockContent.push({ type: 'paragraph', content: pendingInline })
+        pendingInline = []
+      }
+      blockContent.push(node)
+    }
+  }
+  if (pendingInline.length) {
+    blockContent.push({ type: 'paragraph', content: pendingInline })
+  }
+
+  return { version: 1, type: 'doc', content: blockContent }
 }

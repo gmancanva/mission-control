@@ -38,7 +38,7 @@ function EnvTooltip() {
           zIndex: 100,
           pointerEvents: 'none',
         }}>
-          <p style={{ fontSize: 12, color: 'var(--pdTextPrimary)', margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 12, color: 'var(--pdTextStrong)', margin: 0, lineHeight: 1.5 }}>
             <strong style={{ color: 'var(--pdTextStrong)' }}>Loaded from .env.local</strong>
           </p>
           <p style={{ fontSize: 11, color: 'var(--pdTextMuted)', margin: '4px 0 0', lineHeight: 1.5 }}>

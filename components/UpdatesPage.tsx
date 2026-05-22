@@ -712,14 +712,26 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
     <div className="max-w-5xl mx-auto space-y-8">
 
       {/* ── Greeting ── */}
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">{greeting}</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{today}</p>
+      <div style={{ paddingBottom: 4 }}>
+        <h1 className="PdPageTitle">{greeting}</h1>
+        <p style={{ fontSize: 13, color: 'var(--pdTextSubtle)', marginTop: 5, marginBottom: 0 }}>{today}</p>
         {summaryParts.length > 0 && (
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{summaryParts.join(' · ')}</p>
+          <p style={{ fontSize: 13, color: 'var(--pdTextMuted)', marginTop: 10, marginBottom: 0, lineHeight: 1.6 }}>
+            {summaryParts.map((part, i) => {
+              const m = part.match(/^(\d+)(.+)$/)
+              return (
+                <span key={i}>
+                  {i > 0 && <span style={{ color: 'var(--pdTextSubtle)', margin: '0 6px' }}>·</span>}
+                  {m
+                    ? <><span style={{ color: 'var(--pdAccent06)', fontWeight: 700 }}>{m[1]}</span>{m[2]}</>
+                    : part}
+                </span>
+              )
+            })}
+          </p>
         )}
         {summaryParts.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">You&apos;re all caught up.</p>
+          <p style={{ fontSize: 13, color: 'var(--pdTextSubtle)', marginTop: 10, marginBottom: 0 }}>You&apos;re all caught up.</p>
         )}
       </div>
 

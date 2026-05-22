@@ -176,13 +176,20 @@ export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTi
               {visibleTickets.length === 0 ? (
                 <div className="EmptyState">
                   <div className="EmptyState__icon">
-                    <svg viewBox="0 0 28 28" fill="none" style={{ width: 28, height: 28 }}>
-                      <path d="M5 7A2 2 0 0 1 7 5h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V7z" stroke="currentColor" strokeWidth="1.6"/>
-                      <path d="M9 11.5L12.5 15L19 9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    <svg viewBox="0 0 32 32" fill="none" style={{ width: 30, height: 30 }}>
+                      {/* clipboard body */}
+                      <rect x="6" y="5" width="20" height="23" rx="2.5" stroke="currentColor" strokeWidth="1.5"/>
+                      {/* clip at top */}
+                      <path d="M12 5V3.5A1 1 0 0 1 13 2.5h6a1 1 0 0 1 1 1V5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
+                      {/* three completed lines */}
+                      <path d="M10.5 13h4M10.5 17.5h3.5M10.5 22h2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.45"/>
+                      {/* big check circle in corner */}
+                      <circle cx="22" cy="23" r="5" fill="currentColor" opacity="0.12"/>
+                      <path d="M19.5 23l1.8 1.8 3.2-3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                   </div>
                   <p className="EmptyState__title">All clear</p>
-                  <p className="EmptyState__desc">No open tasks assigned to you.</p>
+                  <p className="EmptyState__desc">No open tasks assigned to you right now.</p>
                 </div>
               ) : (
                 <table className="PdTable" style={{ marginTop: 8 }}>

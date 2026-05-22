@@ -255,7 +255,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
         Your personal work dashboard — connect your tools once and everything surfaces in one place.
       </p>
       <p style={{ fontSize: 13, color: 'var(--pdTextMuted)', margin: 0, marginBottom: 40, maxWidth: 380, lineHeight: 1.5 }}>
-        This takes about <strong style={{ color: 'var(--pdTextPrimary)' }}>10–15 minutes</strong> to set up. You can skip any connector and come back later.
+        This takes about <strong style={{ color: 'var(--pdTextStrong)' }}>10–15 minutes</strong> to set up. You can skip any connector and come back later.
       </p>
 
       {/* Integration icon row */}
@@ -337,7 +337,7 @@ function DoneScreen({ configured, onClose }: { configured: Set<string>; onClose:
               }}>
                 <IntegrationIcon id={s.id} size={18} />
               </div>
-              <span style={{ flex: 1, fontSize: 14, color: 'var(--pdTextPrimary)', textAlign: 'left' }}>{s.name}</span>
+              <span style={{ flex: 1, fontSize: 14, color: 'var(--pdTextStrong)', textAlign: 'left' }}>{s.name}</span>
               {done ? (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -501,7 +501,7 @@ function IntegrationStep({
         </div>
       </div>
 
-      <p style={{ fontSize: 15, color: 'var(--pdTextPrimary)', margin: 0, marginBottom: 24, lineHeight: 1.6 }}>
+      <p style={{ fontSize: 15, color: 'var(--pdTextStrong)', margin: 0, marginBottom: 24, lineHeight: 1.6 }}>
         {step.tagline}
       </p>
 
@@ -520,7 +520,7 @@ function IntegrationStep({
               }}>
                 <CheckIcon size={11} />
               </div>
-              <span style={{ fontSize: 14, color: 'var(--pdTextPrimary)', lineHeight: 1.5 }}>{u}</span>
+              <span style={{ fontSize: 14, color: 'var(--pdTextStrong)', lineHeight: 1.5 }}>{u}</span>
             </div>
           ))}
         </div>
@@ -684,7 +684,7 @@ export default function OnboardingWizard({ onClose, onGoToSettings, configured }
                     <div>
                       <div style={{
                         fontSize: 13, fontWeight: isCurrent ? 600 : 400,
-                        color: isCurrent ? 'var(--pdTextStrong)' : 'var(--pdTextPrimary)',
+                        color: isCurrent ? 'var(--pdTextStrong)' : 'var(--pdTextStrong)',
                         whiteSpace: 'nowrap',
                       }}>
                         {s.name}

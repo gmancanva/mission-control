@@ -500,7 +500,7 @@ export default function DashboardPage() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--pdTextPrimary)' }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--pdTextStrong)' }}>
                   Set up integrations
                 </span>
                 <span style={{ fontSize: 11, color: 'var(--pdTextMuted)' }}>
@@ -510,7 +510,7 @@ export default function DashboardPage() {
               <div style={{ height: 4, borderRadius: 4, background: 'var(--pdBorder)', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 4,
-                  background: connectedCount === 5 ? '#16a34a' : 'var(--pdAccent)',
+                  background: connectedCount === 5 ? '#16a34a' : 'var(--pdAccent06)',
                   width: `${(connectedCount / 5) * 100}%`,
                   transition: 'width 0.3s ease',
                 }} />
@@ -688,7 +688,7 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            <>
+            <div key={activeView} className="PdViewContent" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
               {activeView === 'updates' && (
                 <div style={{ flex: 1, overflow: 'auto', padding: '32px 32px' }}>
                   <UpdatesPage
@@ -720,8 +720,8 @@ export default function DashboardPage() {
                           cursor: 'pointer',
                           transition: 'all 0.15s',
                           background: jiraTab === tab ? 'var(--pdSurface1)' : 'transparent',
-                          color: jiraTab === tab ? 'var(--pdTextPrimary)' : 'var(--pdTextMuted)',
-                          borderBottom: jiraTab === tab ? '2px solid var(--pdAccent)' : '2px solid transparent',
+                          color: jiraTab === tab ? 'var(--pdTextStrong)' : 'var(--pdTextMuted)',
+                          borderBottom: jiraTab === tab ? '2px solid var(--pdAccent06)' : '2px solid transparent',
                         }}
                       >
                         {tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -768,7 +768,7 @@ export default function DashboardPage() {
                   onOpenCreate={openCreateModal}
                 />
               )}
-            </>
+            </div>
           )}
         </main>
       </div>

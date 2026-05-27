@@ -312,10 +312,21 @@ export default function DashboardPage() {
           if (d.mentions) setFigmaMentions(d.mentions)
           if (d.synced_at) setSourceSyncTimes(prev => ({ ...prev, figma: d.synced_at! }))
         }
+      } else if (key === 'slack') {
+        const res = await fetch('/api/slack?bust=1')
+        if (res.ok) {
+          const d = await res.json() as { messages?: SlackMessage[]; synced_at?: string }
+          if (d.messages) setSlackMessages(d.messages)
+          if (d.synced_at) setSourceSyncTimes(prev => ({ ...prev, slack: d.synced_at! }))
+        }
       }
     } finally {
       setSyncingSources(prev => { const s = new Set(prev); s.delete(key); return s })
     }
+  }
+
+  async function syncAll() {
+    await Promise.all(['jira', 'canva', 'figma', 'slack'].map(key => syncSource(key)))
   }
 
   function copyMcpPrompt(key: string) {
@@ -417,6 +428,27 @@ export default function DashboardPage() {
             padding: '6px 10px',
             display: 'flex', flexDirection: 'column', gap: 2,
           }}>
+            {/* Sync all button */}
+            {(() => {
+              const isAnySyncing = ['jira', 'canva', 'figma', 'slack'].some(k => syncingSources.has(k))
+              return (
+                <button
+                  onClick={syncAll}
+                  disabled={isAnySyncing}
+                  style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
+                    width: '100%', padding: '5px 0', marginBottom: 4,
+                    borderRadius: 6, border: '1px solid var(--pdBorder)',
+                    background: 'var(--pdSurface0)', cursor: isAnySyncing ? 'default' : 'pointer',
+                    fontSize: 11, fontWeight: 600, color: 'var(--pdTextMuted)',
+                    opacity: isAnySyncing ? 0.5 : 1, transition: 'opacity 0.15s',
+                  }}
+                >
+                  <RefreshCw size={10} style={isAnySyncing ? { animation: 'spin 1s linear infinite' } : undefined} />
+                  Sync all
+                </button>
+              )
+            })()}
             {syncing && (
               <p style={{ fontSize: 11, color: 'var(--pdTextMuted)', textAlign: 'center', margin: '2px 0', transition: 'opacity 0.3s' }}>
                 {SYNC_STATUSES[syncStatusIdx]}
@@ -426,7 +458,7 @@ export default function DashboardPage() {
               { key: 'jira', label: 'Jira', mcp: false },
               { key: 'canva', label: 'Canva', mcp: false },
               { key: 'figma', label: 'Figma', mcp: false },
-              { key: 'slack', label: 'Slack', mcp: true },
+              { key: 'slack', label: 'Slack', mcp: false },
               { key: 'calendar', label: 'Calendar', mcp: true },
             ] as { key: string; label: string; mcp: boolean }[]).map(({ key, label, mcp }) => {
               const ts = sourceSyncTimes[key]

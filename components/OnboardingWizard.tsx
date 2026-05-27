@@ -235,7 +235,7 @@ function ArrowRight({ size = 14 }: { size?: number }) {
 
 // ─── Welcome screen ───────────────────────────────────────────────────────────
 
-function WelcomeScreen({ onStart }: { onStart: () => void }) {
+function WelcomeScreen({ onStart, onSkipToEnd }: { onStart: () => void; onSkipToEnd: () => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '48px 40px 40px' }}>
       <div style={{
@@ -287,7 +287,7 @@ function WelcomeScreen({ onStart }: { onStart: () => void }) {
 
       <p style={{ fontSize: 12, color: 'var(--pdTextMuted)', marginTop: 16 }}>
         Already set up?{' '}
-        <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={onStart}>
+        <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={onSkipToEnd}>
           Skip to the end
         </span>
       </p>
@@ -376,6 +376,15 @@ function GoogleCalendarSetup() {
     navigator.clipboard.writeText(prompt).then(() => {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {
+      // Fallback: select the text in the prompt box
+      const el = document.querySelector<HTMLElement>('[data-sync-prompt]')
+      if (el) {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        window.getSelection()?.removeAllRanges()
+        window.getSelection()?.addRange(range)
+      }
     })
   }
 
@@ -429,7 +438,7 @@ function GoogleCalendarSetup() {
             {copied ? '✓ Copied' : 'Copy'}
           </button>
         </div>
-        <p style={{
+        <p data-sync-prompt style={{
           margin: 0, fontSize: 12, lineHeight: 1.6,
           color: 'var(--pdTextSecondary)',
           fontFamily: 'ui-monospace, monospace',
@@ -589,6 +598,7 @@ export default function OnboardingWizard({ onClose, onGoToSettings, configured }
 
   function goNext() { if (!isLast) setStepIndex(i => i + 1) }
   function goBack() { if (!isFirst) setStepIndex(i => i - 1) }
+  function goToEnd() { setStepIndex(STEP_ORDER.indexOf('done')) }
 
   return (
     <div
@@ -618,7 +628,7 @@ export default function OnboardingWizard({ onClose, onGoToSettings, configured }
         position: 'relative',
       }}>
 
-        {isWelcome && <WelcomeScreen onStart={goNext} />}
+        {isWelcome && <WelcomeScreen onStart={goNext} onSkipToEnd={goToEnd} />}
         {isDone && <DoneScreen configured={configured} onClose={onClose} />}
 
         {integrationStep && (

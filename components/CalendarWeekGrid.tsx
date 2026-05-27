@@ -17,41 +17,96 @@ function extractVideoLink(html: string): string | null {
 }
 
 /**
- * Sanitize calendar description HTML:
- * - Remove dangerous tags (script, style, iframe, form)
- * - Strip inline event handlers
- * - Ensure all links open in a new tab safely
- * - Auto-link bare https:// URLs that aren't already inside <a> tags
+ * Sanitize calendar description HTML using an allowlist approach via the
+ * browser's own DOM parser. Only permits:
+ *   - Safe text/structure elements: b, strong, i, em, u, br, p, div, span,
+ *     ul, ol, li, h1–h4 (all stripped of attributes)
+ *   - <a href="https?://…"> only — unsafe schemes (javascript:, data:, etc.)
+ *     are replaced with their plain-text content
+ * Everything else (script, style, iframe, form, on* handlers, data: attrs…)
+ * is dropped automatically because we rebuild from the parsed DOM.
  */
 function prepareDescription(html: string): string {
-  let out = html
-  // Remove dangerous tags
-  out = out.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-  out = out.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
-  out = out.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '')
-  out = out.replace(/<form\b[^>]*>[\s\S]*?<\/form>/gi, '')
-  out = out.replace(/<input\b[^>]*\/?>/gi, '')
-  // Strip inline event handlers
-  out = out.replace(/\s+on\w+="[^"]*"/gi, '')
-  out = out.replace(/\s+on\w+='[^']*'/gi, '')
-  // Rewrite all <a ...> tags: strip existing target/rel, then add safe values
-  out = out.replace(/<a([^>]*)>/gi, (_, attrs) => {
-    const cleaned = attrs
-      .replace(/\s+target=["'][^"']*["']/gi, '')
-      .replace(/\s+rel=["'][^"']*["']/gi, '')
-    return `<a${cleaned} target="_blank" rel="noopener noreferrer">`
-  })
-  // Auto-link bare URLs that are NOT already inside an <a> tag
-  // Split on existing tags, only process text nodes
-  out = out.replace(/(<[^>]+>)|([^<]+)/g, (match, tag, text) => {
-    if (tag) return tag  // preserve HTML tags as-is
-    // Linkify https:// URLs in plain text segments
-    return text.replace(
-      /(https?:\/\/[^\s<>"')\]]+)/gi,
-      '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'
-    )
-  })
-  return out
+  if (typeof document === 'undefined') return '' // SSR guard (component is 'use client')
+
+  const SAFE_TAGS = new Set([
+    'b', 'strong', 'i', 'em', 'u', 'br', 'p', 'div', 'span',
+    'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4',
+  ])
+
+  const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html')
+
+  function walk(node: Element): void {
+    // Iterate in reverse so in-place mutations don't skip nodes
+    const children = Array.from(node.childNodes).reverse()
+    for (const child of children) {
+      if (child.nodeType === Node.TEXT_NODE) continue // plain text is always safe
+      if (child.nodeType !== Node.ELEMENT_NODE) {
+        child.parentNode?.removeChild(child) // remove comments, PIs, etc.
+        continue
+      }
+
+      const el = child as Element
+      const tag = el.tagName.toLowerCase()
+
+      if (tag === 'a') {
+        const href = (el.getAttribute('href') ?? '').trim()
+        if (!/^https?:\/\//i.test(href)) {
+          // Unsafe scheme — replace with the link's inner text
+          el.replaceWith(el.textContent ?? '')
+        } else {
+          // Safe — strip every attribute, re-add only href + safe defaults
+          while (el.attributes.length) el.removeAttribute(el.attributes[0].name)
+          el.setAttribute('href', href)
+          el.setAttribute('target', '_blank')
+          el.setAttribute('rel', 'noopener noreferrer')
+          walk(el)
+        }
+      } else if (SAFE_TAGS.has(tag)) {
+        // Strip all attributes from allowed structural/text tags
+        while (el.attributes.length) el.removeAttribute(el.attributes[0].name)
+        walk(el)
+      } else {
+        // Disallowed tag — unwrap (keep children, discard the element itself)
+        walk(el)
+        while (el.firstChild) el.before(el.firstChild)
+        el.parentNode?.removeChild(el)
+      }
+    }
+  }
+
+  walk(doc.body)
+
+  // Auto-link bare https:// URLs in text nodes not already inside an <a>
+  const walker = document.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT)
+  const textNodes: Text[] = []
+  let n: Node | null
+  while ((n = walker.nextNode())) {
+    if ((n.parentElement?.tagName ?? '').toLowerCase() !== 'a') {
+      textNodes.push(n as Text)
+    }
+  }
+  for (const textNode of textNodes) {
+    const text = textNode.textContent ?? ''
+    if (!/https?:\/\//i.test(text)) continue
+    const frag = doc.createDocumentFragment()
+    let last = 0
+    text.replace(/(https?:\/\/[^\s<>"')\]]+)/gi, (url, _, offset) => {
+      if (offset > last) frag.append(doc.createTextNode(text.slice(last, offset)))
+      const a = doc.createElement('a')
+      a.href = url
+      a.target = '_blank'
+      a.rel = 'noopener noreferrer'
+      a.textContent = url
+      frag.append(a)
+      last = offset + url.length
+      return url
+    })
+    if (last < text.length) frag.append(doc.createTextNode(text.slice(last)))
+    textNode.replaceWith(frag)
+  }
+
+  return doc.body.innerHTML
 }
 
 type MeetingEntry = {
@@ -145,25 +200,35 @@ export default function CalendarWeekGrid({
   const expandedRsvp = expandedMeeting ? meetingRsvp[expandedMeeting] : undefined
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden">
+    <div style={{ borderRadius: 12, border: '1px solid var(--pdBorder)', background: 'var(--pdSurface1)', overflow: 'hidden' }}>
       {/* Sticky day header */}
       <div
-        className="grid border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900"
-        style={{ gridTemplateColumns: `44px repeat(${dates.length}, 1fr)` }}
+        style={{ display: 'grid', gridTemplateColumns: `44px repeat(${dates.length}, 1fr)`, borderBottom: '1px solid var(--pdBorder)', background: 'var(--pdSurface1)' }}
       >
-        <div className="py-2 border-r border-gray-100 dark:border-gray-800" />
+        <div style={{ padding: '8px 0', borderRight: '1px solid var(--pdSurface2)' }} />
         {dates.map(date => {
           const d = new Date(`${date}T00:00:00`)
           const isToday = date === todayStr
           const isPast = date < todayStr
           return (
-            <div key={date} className={`py-2 text-center border-r border-gray-100 dark:border-gray-800 last:border-r-0 ${isPast && !isToday ? 'opacity-40' : ''}`}>
-              <p className="text-xs text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+            <div key={date} style={{ padding: '8px 0', textAlign: 'center', borderRight: '1px solid var(--pdSurface2)', opacity: isPast && !isToday ? 0.4 : 1 }}>
+              <p style={{ fontSize: 11, color: 'var(--pdTextSubtle)', textTransform: 'uppercase', letterSpacing: '0.06em', margin: 0 }}>
                 {d.toLocaleDateString('en-AU', { weekday: 'short' })}
               </p>
-              <div className={`text-sm font-semibold mt-0.5 w-7 h-7 rounded-full mx-auto flex items-center justify-center ${
-                isToday ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-gray-300'
-              }`}>
+              <div style={{
+                fontSize: 14,
+                fontWeight: 600,
+                marginTop: 2,
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                margin: '2px auto 0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: isToday ? 'var(--pdAccent06)' : 'transparent',
+                color: isToday ? '#fff' : 'var(--pdTextStrong)',
+              }}>
                 {d.getDate()}
               </div>
             </div>
@@ -172,16 +237,15 @@ export default function CalendarWeekGrid({
       </div>
 
       {/* Scrollable time grid */}
-      <div ref={scrollRef} className="overflow-y-auto" style={{ maxHeight: 460 }}>
-        <div className="flex" style={{ height: TOTAL_HEIGHT }}>
+      <div ref={scrollRef} style={{ overflowY: 'auto', maxHeight: 460 }}>
+        <div style={{ display: 'flex', height: TOTAL_HEIGHT }}>
 
           {/* Time label column */}
-          <div className="w-11 shrink-0 border-r border-gray-100 dark:border-gray-800 relative select-none" style={{ height: TOTAL_HEIGHT }}>
+          <div style={{ width: 44, flexShrink: 0, borderRight: '1px solid var(--pdSurface2)', position: 'relative', userSelect: 'none', height: TOTAL_HEIGHT }}>
             {HOURS.map(h => (
               <div
                 key={h}
-                className="absolute right-1.5 text-xs text-gray-400 dark:text-gray-600 leading-none"
-                style={{ top: (h - GRID_START) * PX_PER_HOUR - 7 }}
+                style={{ position: 'absolute', right: 6, fontSize: 11, color: 'var(--pdTextSubtle)', lineHeight: 1, top: (h - GRID_START) * PX_PER_HOUR - 7 }}
               >
                 {h !== GRID_START ? formatHour(h) : ''}
               </div>
@@ -197,15 +261,20 @@ export default function CalendarWeekGrid({
             return (
               <div
                 key={date}
-                className={`flex-1 relative border-r border-gray-100 dark:border-gray-800 last:border-r-0 ${isPast && !isToday ? 'opacity-40' : ''}`}
-                style={{ height: TOTAL_HEIGHT }}
+                style={{
+                  flex: 1,
+                  position: 'relative',
+                  borderRight: '1px solid var(--pdSurface2)',
+                  height: TOTAL_HEIGHT,
+                  opacity: isPast && !isToday ? 0.4 : 1,
+                  background: isToday ? 'color-mix(in srgb, var(--pdAccent06) 3%, transparent)' : undefined,
+                }}
               >
                 {/* Hour grid lines */}
                 {HOURS.map(h => (
                   <div
                     key={h}
-                    className="absolute w-full border-t border-gray-100 dark:border-gray-800"
-                    style={{ top: (h - GRID_START) * PX_PER_HOUR }}
+                    style={{ position: 'absolute', width: '100%', borderTop: '1px solid var(--pdSurface2)', top: (h - GRID_START) * PX_PER_HOUR }}
                   />
                 ))}
 
@@ -240,12 +309,12 @@ export default function CalendarWeekGrid({
                       } ${isSelected ? 'ring-2 ring-blue-500 dark:ring-blue-400 z-[6]' : ''}`}
                       style={{ top, height }}
                     >
-                      <div className="flex items-start gap-1">
-                        <p className="text-xs font-medium leading-tight text-gray-800 dark:text-gray-100 truncate flex-1">{m.title}</p>
-                        {isPending && <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 shrink-0 leading-tight">?</span>}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4 }}>
+                        <p style={{ fontSize: 11, fontWeight: 500, lineHeight: 1.3, color: 'var(--pdTextStrong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, margin: 0 }}>{m.title}</p>
+                        {isPending && <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--pdStatusReviewText)', flexShrink: 0, lineHeight: 1.3 }}>?</span>}
                       </div>
                       {height > 32 && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-tight mt-0.5">
+                        <p style={{ fontSize: 11, color: 'var(--pdTextSubtle)', lineHeight: 1.3, marginTop: 2 }}>
                           {start.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
                         </p>
                       )}
@@ -260,24 +329,24 @@ export default function CalendarWeekGrid({
 
       {/* Expanded detail drawer */}
       {expandedMeetingEntry && (
-        <div className="border-t border-gray-200 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-800/50">
-          <div className="space-y-3">
-            <div className="flex items-start justify-between gap-3">
+        <div style={{ borderTop: '1px solid var(--pdBorder)', padding: 16, background: 'var(--pdSurface2)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
               <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">{expandedMeetingEntry.title}</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 600, color: 'var(--pdTextStrong)', margin: 0 }}>{expandedMeetingEntry.title}</h3>
                   {expandedMeetingEntry.responseStatus === 'needsAction' && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-700">
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'var(--pdStatusReviewBg)', color: 'var(--pdStatusReviewText)', border: '1px solid var(--pdStatusReviewBorder)' }}>
                       Awaiting response
                     </span>
                   )}
                   {expandedMeetingEntry.responseStatus === 'tentative' && (
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-700">
+                    <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 99, background: 'var(--pdSurface3)', color: 'var(--pdTextSubtle)', border: '1px solid var(--pdBorder)' }}>
                       Tentative
                     </span>
                   )}
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                <p style={{ fontSize: 13, color: 'var(--pdTextSubtle)', marginTop: 2 }}>
                   {new Date(expandedMeetingEntry.start).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
                   {' – '}
                   {new Date(expandedMeetingEntry.end).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit', hour12: true })}
@@ -287,19 +356,19 @@ export default function CalendarWeekGrid({
               </div>
               <button
                 onClick={() => onExpandMeeting(expandedMeeting!)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 shrink-0 mt-0.5"
+                className="IconButton IconButton--small"
+                style={{ flexShrink: 0, marginTop: 2 }}
               >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg style={{ width: 14, height: 14 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {expandedDetails === 'loading' && (
-              <p className="text-sm text-gray-400">Loading details…</p>
+              <p style={{ fontSize: 13, color: 'var(--pdTextSubtle)' }}>Loading details…</p>
             )}
             {expandedDetails && expandedDetails !== 'loading' && expandedDetails !== 'error' && (() => {
-              // Resolve the best video call link: explicit field first, then extracted from description
               const explicitVideoLink = expandedDetails.hangoutLink || expandedDetails.conferenceLink
               const descVideoLink = expandedDetails.description ? extractVideoLink(expandedDetails.description) : null
               const videoLink = explicitVideoLink || descVideoLink
@@ -308,29 +377,27 @@ export default function CalendarWeekGrid({
               const hasDetails = !!(expandedDetails.description || expandedDetails.location || videoLink || expandedDetails.attendees.length > 0)
               if (!hasDetails) return null
               return (
-                <div className="space-y-2">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {expandedDetails.description && (
                     <div
-                      className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed calendar-description relative"
+                      style={{ fontSize: 13, color: 'var(--pdTextBase)', lineHeight: 1.6 }}
+                      className="calendar-description"
                       dangerouslySetInnerHTML={{ __html: prepareDescription(expandedDetails.description) }}
                     />
                   )}
                   {expandedDetails.location && (
-                    <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
-                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--pdTextSubtle)' }}>
+                      <svg style={{ width: 13, height: 13, flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
-                      <span className="truncate">{expandedDetails.location}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{expandedDetails.location}</span>
                     </div>
                   )}
                   {videoLink && (
-                    <a
-                      href={videoLink}
-                      target="_blank" rel="noopener noreferrer"
-                      className="flex items-center gap-1.5 text-sm text-blue-600 dark:text-blue-400 hover:underline"
-                    >
-                      <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <a href={videoLink} target="_blank" rel="noopener noreferrer"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--pdAccent06)', textDecoration: 'none', fontWeight: 500 }}>
+                      <svg style={{ width: 13, height: 13, flexShrink: 0 }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                       {isZoom ? 'Join Zoom' : 'Join video call'}
@@ -338,23 +405,25 @@ export default function CalendarWeekGrid({
                   )}
                   {expandedDetails.attendees.length > 0 && (
                     <div>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">
+                      <p style={{ fontSize: 11, color: 'var(--pdTextSubtle)', marginBottom: 6 }}>
                         {expandedDetails.attendees.length} attendee{expandedDetails.attendees.length !== 1 ? 's' : ''}
                       </p>
-                      <div className="flex flex-wrap gap-1">
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                         {expandedDetails.attendees.slice(0, 14).map((a, j) => (
-                          <span key={j} className={`text-xs px-1.5 py-0.5 rounded ${
-                            a.responseStatus === 'accepted'
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                              : a.responseStatus === 'declined'
-                              ? 'bg-red-100 text-red-500 dark:bg-red-900/40 dark:text-red-400 line-through opacity-60'
-                              : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
-                          }`}>
+                          <span key={j} style={{
+                            fontSize: 11,
+                            padding: '2px 6px',
+                            borderRadius: 4,
+                            background: a.responseStatus === 'accepted' ? 'var(--pdStatusDoneBg)' : a.responseStatus === 'declined' ? 'var(--pdStatusBlockedBg)' : 'var(--pdSurface3)',
+                            color: a.responseStatus === 'accepted' ? 'var(--pdStatusDoneText)' : a.responseStatus === 'declined' ? 'var(--pdStatusBlockedText)' : 'var(--pdTextSubtle)',
+                            textDecoration: a.responseStatus === 'declined' ? 'line-through' : undefined,
+                            opacity: a.responseStatus === 'declined' ? 0.7 : 1,
+                          }}>
                             {a.displayName || a.email.split('@')[0]}
                           </span>
                         ))}
                         {expandedDetails.attendees.length > 14 && (
-                          <span className="text-xs text-gray-400">+{expandedDetails.attendees.length - 14} more</span>
+                          <span style={{ fontSize: 11, color: 'var(--pdTextSubtle)' }}>+{expandedDetails.attendees.length - 14} more</span>
                         )}
                       </div>
                     </div>
@@ -364,13 +433,14 @@ export default function CalendarWeekGrid({
             })()}
 
             {/* RSVP row */}
-            <div className="flex items-center gap-2 pt-1 flex-wrap">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4, flexWrap: 'wrap' }}>
               {expandedMeetingEntry.responseStatus === 'needsAction' && (
                 <a
                   href={`https://calendar.google.com/calendar/r/week/${new Date(expandedMeetingEntry.start).getFullYear()}/${new Date(expandedMeetingEntry.start).getMonth() + 1}/${new Date(expandedMeetingEntry.start).getDate()}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm px-3 py-1.5 rounded-md font-medium bg-amber-600 hover:bg-amber-700 text-white transition-colors"
+                  className="PdButton PdButton--primary PdButton--small"
+                  style={{ textDecoration: 'none' }}
                 >
                   Respond in Google Calendar →
                 </a>
@@ -379,21 +449,13 @@ export default function CalendarWeekGrid({
                 <>
                   <button
                     onClick={() => onSetRsvp(expandedMeeting!, 'attending')}
-                    className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
-                      expandedRsvp === 'attending'
-                        ? 'bg-green-600 text-white'
-                        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-green-50 dark:hover:bg-green-900/30 hover:text-green-700 dark:hover:text-green-400 hover:border-green-300 dark:hover:border-green-700'
-                    }`}
+                    className={expandedRsvp === 'attending' ? 'PdButton PdButton--primary PdButton--small' : 'PdButton PdButton--secondary PdButton--small'}
                   >
                     ✓ Attending
                   </button>
                   <button
                     onClick={() => onSetRsvp(expandedMeeting!, 'not-attending')}
-                    className={`text-sm px-3 py-1.5 rounded-md font-medium transition-colors ${
-                      expandedRsvp === 'not-attending'
-                        ? 'bg-red-500 text-white'
-                        : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 hover:border-red-300 dark:hover:border-red-700'
-                    }`}
+                    className={expandedRsvp === 'not-attending' ? 'PdButton PdButton--primary PdButton--small' : 'PdButton PdButton--secondary PdButton--small'}
                   >
                     ✗ Not attending
                   </button>
@@ -403,7 +465,7 @@ export default function CalendarWeekGrid({
                 href="https://calendar.google.com/calendar/r"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 ml-auto"
+                style={{ fontSize: 12, color: 'var(--pdTextSubtle)', textDecoration: 'none', marginLeft: 'auto' }}
               >
                 Open Google Calendar ↗
               </a>

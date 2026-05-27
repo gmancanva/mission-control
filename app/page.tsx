@@ -18,130 +18,20 @@ import UpdatesPage from '@/components/UpdatesPage'
 import OnboardingWizard from '@/components/OnboardingWizard'
 import { useTheme } from '@/components/ThemeProvider'
 import ProfileAvatar from '@/components/ProfileAvatar'
+import { Moon, Sun, Search, Plus, Settings, RefreshCw, Check, Copy, Sunrise, ListChecks, LayoutDashboard, Gauge, AtSign } from 'lucide-react'
 
 type View = 'updates' | 'tasks' | 'jira-projects' | 'capacity' | 'comms' | 'settings'
 
 const NAV_ITEMS: { id: View; label: string; icon: React.ReactNode; count?: number }[] = [
-  {
-    id: 'updates',
-    label: 'Summary',
-    icon: (
-      // Sunrise — morning briefing
-      <svg viewBox="0 0 18 18" fill="none">
-        <path d="M3.5 13a5.5 5.5 0 0 1 11 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M9 2.5v1.8M14.2 4.8l-1.3 1.3M3.8 4.8l1.3 1.3M1.5 10.5h1.8M14.7 10.5h1.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'tasks',
-    label: 'Tasks',
-    icon: (
-      // Checklist with ticks
-      <svg viewBox="0 0 18 18" fill="none">
-        <path d="M3 4.5l1.2 1.2L6.5 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M3 9l1.2 1.2L6.5 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M3 13.5l1.2 1.2L6.5 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M9 5h6M9 9.5h6M9 14h4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'jira-projects',
-    label: 'Jira Projects',
-    icon: (
-      // Bento grid — project overview
-      <svg viewBox="0 0 18 18" fill="none">
-        <rect x="2" y="2" width="6" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
-        <rect x="10" y="2" width="6" height="4.5" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
-        <rect x="2" y="11" width="6" height="5" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
-        <rect x="10" y="8.5" width="6" height="7.5" rx="1.2" stroke="currentColor" strokeWidth="1.4"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'capacity',
-    label: 'Capacity',
-    icon: (
-      // Speedometer / gauge
-      <svg viewBox="0 0 18 18" fill="none">
-        <path d="M3.2 13.5a6.5 6.5 0 0 1 11.6 0" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M9 13l3-4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        <circle cx="9" cy="13" r="1.1" fill="currentColor"/>
-        <path d="M5.5 11l.8.8M12.5 11l-.8.8M9 6v1.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-      </svg>
-    ),
-  },
-  {
-    id: 'comms',
-    label: 'Mentions',
-    icon: (
-      // @ symbol
-      <svg viewBox="0 0 18 18" fill="none">
-        <circle cx="9" cy="9" r="2.8" stroke="currentColor" strokeWidth="1.4"/>
-        <path d="M11.8 9a2.8 2.8 0 1 1-5.6 0 2.8 2.8 0 0 1 5.6 0v1.5c0 1 .9 1.5 1.7.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-        <circle cx="9" cy="9" r="6.5" stroke="currentColor" strokeWidth="1.3"/>
-      </svg>
-    ),
-  },
+  { id: 'updates',       label: 'Summary',       icon: <Sunrise size={17} /> },
+  { id: 'tasks',         label: 'Tasks',         icon: <ListChecks size={17} /> },
+  { id: 'jira-projects', label: 'Jira Projects', icon: <LayoutDashboard size={17} /> },
+  { id: 'capacity',      label: 'Capacity',      icon: <Gauge size={17} /> },
+  { id: 'comms',         label: 'Mentions',      icon: <AtSign size={17} /> },
 ]
 
 function SyncIcon({ spinning }: { spinning: boolean }) {
-  return (
-    <svg
-      style={{ width: 16, height: 16, ...(spinning ? { animation: 'spin 1s linear infinite' } : {}) }}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-    </svg>
-  )
-}
-
-function MoonIcon() {
-  return (
-    <svg viewBox="0 0 18 18" fill="none" style={{ width: 16, height: 16 }}>
-      <path d="M14.5 11A6 6 0 0 1 7 3.5 6 6 0 1 0 14.5 11z" fill="currentColor"/>
-    </svg>
-  )
-}
-
-function SunIcon() {
-  return (
-    <svg viewBox="0 0 18 18" fill="none" style={{ width: 16, height: 16 }}>
-      <circle cx="9" cy="9" r="3.5" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.7 3.7l1.4 1.4M12.9 12.9l1.4 1.4M3.7 14.3l1.4-1.4M12.9 5.1l1.4-1.4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function SearchIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" style={{ width: 16, height: 16 }}>
-      <circle cx="7" cy="7" r="4.2" stroke="currentColor" strokeWidth="1.5"/>
-      <path d="M10.4 10.4L13 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" style={{ width: 14, height: 14 }}>
-      <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function CogIcon() {
-  return (
-    <svg viewBox="0 0 18 18" fill="none" style={{ width: 18, height: 18 }}>
-      <circle cx="9" cy="9" r="2.5" stroke="currentColor" strokeWidth="1.4"/>
-      <path d="M9 1.5v2M9 14.5v2M16.5 9h-2M3.5 9h-2M14.2 3.8l-1.4 1.4M5.2 12.8l-1.4 1.4M14.2 14.2l-1.4-1.4M5.2 5.2L3.8 3.8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-    </svg>
-  )
+  return <RefreshCw size={15} style={spinning ? { animation: 'spin 1s linear infinite' } : undefined} />
 }
 
 export default function DashboardPage() {
@@ -510,7 +400,7 @@ export default function DashboardPage() {
               <div style={{ height: 4, borderRadius: 4, background: 'var(--pdBorder)', overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 4,
-                  background: connectedCount === 5 ? '#16a34a' : 'var(--pdAccent06)',
+                  background: connectedCount === 5 ? 'var(--pdStatusDoneDot)' : 'var(--pdAccent06)',
                   width: `${(connectedCount / 5) * 100}%`,
                   transition: 'width 0.3s ease',
                 }} />
@@ -555,7 +445,7 @@ export default function DashboardPage() {
                 <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
                   <span style={{ fontSize: 12, color: 'var(--pdTextMuted)', flex: 1, minWidth: 0 }}>{label}</span>
                   {ageStr && (
-                    <span style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: stale ? '#f59e0b' : 'var(--pdTextMuted)' }}>
+                    <span style={{ fontSize: 11, fontWeight: 500, flexShrink: 0, color: stale ? 'var(--pdPrioMedium)' : 'var(--pdTextMuted)' }}>
                       {ageStr}
                     </span>
                   )}
@@ -573,21 +463,15 @@ export default function DashboardPage() {
                         style={{
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           width: 26, height: 26, borderRadius: 6, border: '1px solid var(--pdBorder)',
-                          background: isCopied ? '#16a34a' : 'var(--pdSurface0)',
+                          background: isCopied ? 'var(--pdStatusDoneDot)' : 'var(--pdSurface0)',
                           cursor: 'pointer', padding: 0, flexShrink: 0,
                           transition: 'background 0.15s',
                         }}
                       >
-                        {isCopied ? (
-                          <svg viewBox="0 0 12 12" fill="none" style={{ width: 12, height: 12 }}>
-                            <path d="M2 6l2.5 2.5L10 4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          </svg>
-                        ) : (
-                          <svg viewBox="0 0 12 12" fill="none" style={{ width: 12, height: 12 }}>
-                            <rect x="4" y="1" width="7" height="8" rx="1" stroke="currentColor" strokeWidth="1.2"/>
-                            <path d="M1 4h2v6h5v1H1V4z" fill="currentColor" opacity="0.5"/>
-                          </svg>
-                        )}
+                        {isCopied
+                          ? <Check size={11} style={{ color: 'white' }} />
+                          : <Copy size={11} />
+                        }
                       </button>
                     </div>
                   ) : (
@@ -601,15 +485,7 @@ export default function DashboardPage() {
                         padding: 0, flexShrink: 0, opacity: isSyncing ? 0.5 : 1,
                       }}
                     >
-                      <svg
-                        viewBox="0 0 12 12" fill="none"
-                        style={{ width: 12, height: 12, ...(isSyncing ? { animation: 'spin 1s linear infinite' } : {}) }}
-                      >
-                        <path d="M2 2.5v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M10 9.5v-3H7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M9.5 4.5A4 4 0 0 0 2.5 5.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                        <path d="M2.5 7.5A4 4 0 0 0 9.5 6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                      </svg>
+                      <RefreshCw size={11} style={isSyncing ? { animation: 'spin 1s linear infinite' } : undefined} />
                     </button>
                   )}
                 </div>
@@ -621,7 +497,7 @@ export default function DashboardPage() {
           className={`PdNavItem${activeView === 'settings' ? ' is-selected' : ''}`}
           onClick={() => setActiveView('settings')}
         >
-          <CogIcon />
+          <Settings size={17} />
           Settings
         </button>
       </aside>
@@ -650,7 +526,7 @@ export default function DashboardPage() {
           )}
 
           <div className="PdSearch">
-            <SearchIcon />
+            <Search size={14} />
             <input placeholder="Search tickets, epics…" readOnly />
             <span className="Kbd" style={{ fontSize: 11 }}>⌘K</span>
           </div>
@@ -660,14 +536,14 @@ export default function DashboardPage() {
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Switch to light' : 'Switch to dark'}
           >
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
 
           <button
             className="PdButton PdButton--primary PdButton--small"
             onClick={() => openCreateModal({ tab: 'template' })}
           >
-            <PlusIcon />
+            <Plus size={13} />
             New ticket
           </button>
         </header>
@@ -815,8 +691,8 @@ export default function DashboardPage() {
           left: hoveredTooltip.x + 10,
           top: hoveredTooltip.y + hoveredTooltip.h / 2,
           transform: 'translateY(-50%)',
-          background: '#1a1a1a',
-          color: '#fff',
+          background: 'var(--pdTextStrong)',
+          color: 'var(--pdSurface0)',
           fontSize: 11, lineHeight: 1.5, fontWeight: 400,
           padding: '7px 10px', borderRadius: 7,
           width: 200, whiteSpace: 'normal',
@@ -830,7 +706,7 @@ export default function DashboardPage() {
             width: 0, height: 0,
             borderTop: '5px solid transparent',
             borderBottom: '5px solid transparent',
-            borderRight: '5px solid #1a1a1a',
+            borderRight: '5px solid var(--pdTextStrong)',
           }} />
         </div>
       )}

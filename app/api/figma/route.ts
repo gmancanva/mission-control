@@ -1,17 +1,18 @@
 import { NextResponse } from 'next/server'
-import path from 'path'
-import fs from 'fs'
 import { fetchFigmaMentions, isConfigured } from '@/lib/figma'
-import { DATA_DIR } from '@/lib/data-dir'
+import { readCache, mergeAndWrite } from '@/lib/json-cache'
+import type { FigmaMention } from '@/lib/figma'
 
 export type { FigmaMention, FigmaReply } from '@/lib/figma'
 
-const CACHE_PATH = path.join(DATA_DIR, 'figma-mentions-cache.json')
+export const dynamic = 'force-dynamic'
 
 export type FigmaMentionsCache = {
   synced_at: string
-  mentions: import('@/lib/figma').FigmaMention[]
+  mentions: FigmaMention[]
 }
+
+const CACHE_FILE = 'figma-mentions-cache.json'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -20,9 +21,14 @@ export async function GET(request: Request) {
   if (searchParams.get('bust') === '1' && isConfigured()) {
     try {
       const mentions = await fetchFigmaMentions()
-      const cache: FigmaMentionsCache = { synced_at: new Date().toISOString(), mentions }
-      if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
-      fs.writeFileSync(CACHE_PATH, JSON.stringify(cache, null, 2))
+      // mergeAndWrite only writes when mentions.length > 0 — prevents clobbering a
+      // populated cache if Figma returns nothing due to a transient API error
+      const cache = mergeAndWrite<FigmaMentionsCache, FigmaMention>(
+        CACHE_FILE,
+        mentions,
+        (c) => c.mentions,
+        (merged) => ({ synced_at: new Date().toISOString(), mentions: merged }),
+      )
       return NextResponse.json({ available: true, ...cache })
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error'
@@ -31,15 +37,8 @@ export async function GET(request: Request) {
   }
 
   // Normal load: serve from pre-fetched cache
-  if (fs.existsSync(CACHE_PATH)) {
-    try {
-      const raw = fs.readFileSync(CACHE_PATH, 'utf-8')
-      const data = JSON.parse(raw) as FigmaMentionsCache
-      return NextResponse.json({ available: true, ...data })
-    } catch {
-      // Fall through
-    }
-  }
+  const cached = readCache<FigmaMentionsCache>(CACHE_FILE)
+  if (cached) return NextResponse.json({ available: true, ...cached })
 
   return NextResponse.json({ available: false, mentions: [] })
 }

@@ -211,8 +211,8 @@
   --pdRadiusPill: 999px;
 
   /* Gradients */
-  --pdGradientSurface1: linear-gradient(180deg, #FFFFFF 0%, #FBF7F0 100%);
-  --pdGradientColumn: linear-gradient(180deg, #F4F0E8 0%, #EFE9DC 100%);
+  --pdGradientSurface1: linear-gradient(180deg, var(--pdSurface1) 0%, var(--pdSurface0) 100%);
+  --pdGradientColumn: linear-gradient(180deg, var(--pdSurface2) 0%, var(--pdSurface3) 100%);
   --pdGradientAccent: linear-gradient(135deg, var(--pdAccent02) 0%, var(--pdAccent01) 100%);
   --pdGradientAccentSoft: linear-gradient(135deg, var(--pdAccentA02) 0%, var(--pdAccentA01) 60%, transparent 100%);
 
@@ -286,8 +286,6 @@
   --pdTextMuted: #98927F;
   --pdTextSubtle: #6F6A5A;
 
-  --pdGradientSurface1: linear-gradient(180deg, #232230 0%, #1B1A24 100%);
-  --pdGradientColumn: linear-gradient(180deg, #1C1B26 0%, #15141C 100%);
   --pdGradientAccent: linear-gradient(135deg, var(--pdAccent03) 0%, var(--pdAccent02) 100%);
   --pdGradientAccentSoft: linear-gradient(135deg, var(--pdAccentA02) 0%, var(--pdAccentA01) 60%, transparent 100%);
 
@@ -575,7 +573,7 @@
   --pdAccent03: #CFBDFF;
   --pdAccent04: #B29CFF;
   --pdAccent05: #8B5CF6;
-  --pdAccentGradient: linear-gradient(135deg, #8B5CF6, #4C1D95);
+  --pdAccentGradient: linear-gradient(110deg, #C4B5FD 0%, #7C3AED 45%, #3B0764 100%);
   --pdAccent06: #7C3AED;
   --pdAccent07: #6D28D9;
   --pdAccent08: #5B21B6;
@@ -625,7 +623,7 @@
   --pdAccent03: #FFABD9;
   --pdAccent04: #F882C0;
   --pdAccent05: #EC4899;
-  --pdAccentGradient: linear-gradient(135deg, #DB2777, #500724);
+  --pdAccentGradient: linear-gradient(110deg, #FDA4AF 0%, #E11D48 50%, #881337 100%);
   --pdAccent06: #DB2777;
   --pdAccent07: #BE185D;
   --pdAccent08: #9D174D;
@@ -675,7 +673,7 @@
   --pdAccent03: #A7F3D0;
   --pdAccent04: #6EE7B7;
   --pdAccent05: #10B981;
-  --pdAccentGradient: linear-gradient(135deg, #10B981, #022C22);
+  --pdAccentGradient: linear-gradient(110deg, #5EEAD4 0%, #0D9488 50%, #042F2E 100%);
   --pdAccent06: #059669;
   --pdAccent07: #047857;
   --pdAccent08: #065F46;
@@ -725,7 +723,7 @@
   --pdAccent03: #FDE68A;
   --pdAccent04: #FCD34D;
   --pdAccent05: #F59E0B;
-  --pdAccentGradient: linear-gradient(135deg, #D97706, #451A03);
+  --pdAccentGradient: linear-gradient(110deg, #FEF08A 0%, #EAB308 50%, #713F12 100%);
   --pdAccent06: #D97706;
   --pdAccent07: #B45309;
   --pdAccent08: #92400E;
@@ -775,7 +773,7 @@
   --pdAccent03: #FED7AA;
   --pdAccent04: #FDBA74;
   --pdAccent05: #EA580C;
-  --pdAccentGradient: linear-gradient(135deg, #F9A8D4, #C2410C);
+  --pdAccentGradient: linear-gradient(110deg, #FBCFE8 0%, #F43F5E 45%, #7F1D1D 100%);
   --pdAccent06: #C2410C;
   --pdAccent07: #9A3412;
   --pdAccent08: #7C2D12;
@@ -825,7 +823,7 @@
   --pdAccent03: #C7D2FE;
   --pdAccent04: #A5B4FC;
   --pdAccent05: #6366F1;
-  --pdAccentGradient: linear-gradient(135deg, #A5F3FC, #6366F1, #1E1B4B);
+  --pdAccentGradient: linear-gradient(110deg, #A5F3FC 0%, #0EA5E9 55%, #0C4A6E 100%);
   --pdAccent06: #4F46E5;
   --pdAccent07: #4338CA;
   --pdAccent08: #3730A3;
@@ -875,7 +873,7 @@
   --pdAccent03: #BBF7D0;
   --pdAccent04: #86EFAC;
   --pdAccent05: #22C55E;
-  --pdAccentGradient: linear-gradient(135deg, #86EFAC, #22C55E, #052E16);
+  --pdAccentGradient: linear-gradient(110deg, #BBF7D0 0%, #16A34A 50%, #052E16 100%);
   --pdAccent06: #16A34A;
   --pdAccent07: #15803D;
   --pdAccent08: #166534;
@@ -925,7 +923,7 @@
   --pdAccent03: #BFDBFE;
   --pdAccent04: #93C5FD;
   --pdAccent05: #3B82F6;
-  --pdAccentGradient: linear-gradient(135deg, #3B82F6, #1E1B4B);
+  --pdAccentGradient: linear-gradient(110deg, #BFDBFE 0%, #2563EB 45%, #0F172A 100%);
   --pdAccent06: #2563EB;
   --pdAccent07: #1D4ED8;
   --pdAccent08: #1E40AF;
@@ -966,6 +964,201 @@
   --pdSurface3: hsl(225, 12%, 20%);
   --pdBorder: hsl(225, 12%, 22%);
   --pdBorderStrong: hsl(225, 14%, 28%);
+}
+
+/* ============================================================
+   TEXT TOKENS & SHADOWS PER ACCENT
+   Root defines warm-brown defaults (correct for orange/default).
+   Every other accent overrides with hue-matched neutral text so
+   type looks right on tinted surfaces. Dark blocks only need
+   to override text; shadows are light-mode-only artefacts.
+   ============================================================ */
+
+/* ── Blue (218°) ─────────────────────────────────────────── */
+[data-accent="blue"] {
+  --pdTextStrong: hsl(218, 20%,  3%);
+  --pdTextBase:   hsl(218, 14%,  9%);
+  --pdTextMuted:  hsl(218, 10%, 22%);
+  --pdTextSubtle: hsl(218,  8%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="blue"][data-theme="dark"] {
+  --pdTextStrong: hsl(218, 18%, 94%);
+  --pdTextBase:   hsl(218, 14%, 80%);
+  --pdTextMuted:  hsl(218, 10%, 58%);
+  --pdTextSubtle: hsl(218,  8%, 42%);
+}
+
+/* ── Purple (262°) ───────────────────────────────────────── */
+[data-accent="purple"] {
+  --pdTextStrong: hsl(262, 20%,  3%);
+  --pdTextBase:   hsl(262, 14%,  9%);
+  --pdTextMuted:  hsl(262, 10%, 22%);
+  --pdTextSubtle: hsl(262,  8%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="purple"][data-theme="dark"] {
+  --pdTextStrong: hsl(262, 18%, 94%);
+  --pdTextBase:   hsl(262, 14%, 80%);
+  --pdTextMuted:  hsl(262, 10%, 58%);
+  --pdTextSubtle: hsl(262,  8%, 42%);
+}
+
+/* ── Teal (172°) ─────────────────────────────────────────── */
+[data-accent="teal"] {
+  --pdTextStrong: hsl(172, 18%,  3%);
+  --pdTextBase:   hsl(172, 12%,  9%);
+  --pdTextMuted:  hsl(172,  9%, 22%);
+  --pdTextSubtle: hsl(172,  7%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="teal"][data-theme="dark"] {
+  --pdTextStrong: hsl(172, 15%, 94%);
+  --pdTextBase:   hsl(172, 12%, 80%);
+  --pdTextMuted:  hsl(172,  8%, 58%);
+  --pdTextSubtle: hsl(172,  6%, 42%);
+}
+
+/* ── Rose (345°) ─────────────────────────────────────────── */
+[data-accent="rose"] {
+  --pdTextStrong: hsl(345, 20%,  3%);
+  --pdTextBase:   hsl(345, 14%,  9%);
+  --pdTextMuted:  hsl(345, 10%, 22%);
+  --pdTextSubtle: hsl(345,  8%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="rose"][data-theme="dark"] {
+  --pdTextStrong: hsl(345, 16%, 94%);
+  --pdTextBase:   hsl(345, 12%, 80%);
+  --pdTextMuted:  hsl(345,  8%, 58%);
+  --pdTextSubtle: hsl(345,  6%, 42%);
+}
+
+/* ── Slate (220°, desaturated) ───────────────────────────── */
+[data-accent="slate"] {
+  --pdTextStrong: hsl(220,  6%,  3%);
+  --pdTextBase:   hsl(220,  5%,  9%);
+  --pdTextMuted:  hsl(220,  4%, 22%);
+  --pdTextSubtle: hsl(220,  3%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="slate"][data-theme="dark"] {
+  --pdTextStrong: hsl(220,  5%, 94%);
+  --pdTextBase:   hsl(220,  4%, 80%);
+  --pdTextMuted:  hsl(220,  3%, 58%);
+  --pdTextSubtle: hsl(220,  2%, 42%);
+}
+
+/* ── Aubergine (262°) ────────────────────────────────────── */
+[data-accent="aubergine"] {
+  --pdTextStrong: hsl(262, 20%,  3%);
+  --pdTextBase:   hsl(262, 14%,  9%);
+  --pdTextMuted:  hsl(262, 10%, 22%);
+  --pdTextSubtle: hsl(262,  8%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="aubergine"][data-theme="dark"] {
+  --pdTextStrong: hsl(262, 18%, 94%);
+  --pdTextBase:   hsl(262, 14%, 80%);
+  --pdTextMuted:  hsl(262, 10%, 58%);
+  --pdTextSubtle: hsl(262,  8%, 42%);
+}
+
+/* ── Raspberry (330°) ────────────────────────────────────── */
+[data-accent="raspberry"] {
+  --pdTextStrong: hsl(330, 20%,  3%);
+  --pdTextBase:   hsl(330, 14%,  9%);
+  --pdTextMuted:  hsl(330, 10%, 22%);
+  --pdTextSubtle: hsl(330,  8%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="raspberry"][data-theme="dark"] {
+  --pdTextStrong: hsl(330, 16%, 94%);
+  --pdTextBase:   hsl(330, 12%, 80%);
+  --pdTextMuted:  hsl(330,  8%, 58%);
+  --pdTextSubtle: hsl(330,  6%, 42%);
+}
+
+/* ── Chill (160°) ────────────────────────────────────────── */
+[data-accent="chill"] {
+  --pdTextStrong: hsl(160, 18%,  3%);
+  --pdTextBase:   hsl(160, 12%,  9%);
+  --pdTextMuted:  hsl(160,  9%, 22%);
+  --pdTextSubtle: hsl(160,  7%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="chill"][data-theme="dark"] {
+  --pdTextStrong: hsl(160, 14%, 94%);
+  --pdTextBase:   hsl(160, 10%, 80%);
+  --pdTextMuted:  hsl(160,  7%, 58%);
+  --pdTextSubtle: hsl(160,  5%, 42%);
+}
+
+/* ── Sea Glass (252°) ────────────────────────────────────── */
+[data-accent="seaglass"] {
+  --pdTextStrong: hsl(252, 20%,  3%);
+  --pdTextBase:   hsl(252, 14%,  9%);
+  --pdTextMuted:  hsl(252, 10%, 22%);
+  --pdTextSubtle: hsl(252,  8%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="seaglass"][data-theme="dark"] {
+  --pdTextStrong: hsl(252, 18%, 94%);
+  --pdTextBase:   hsl(252, 14%, 80%);
+  --pdTextMuted:  hsl(252, 10%, 58%);
+  --pdTextSubtle: hsl(252,  8%, 42%);
+}
+
+/* ── Mint Chip (142°) ────────────────────────────────────── */
+[data-accent="mintchip"] {
+  --pdTextStrong: hsl(142, 18%,  3%);
+  --pdTextBase:   hsl(142, 12%,  9%);
+  --pdTextMuted:  hsl(142,  9%, 22%);
+  --pdTextSubtle: hsl(142,  7%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="mintchip"][data-theme="dark"] {
+  --pdTextStrong: hsl(142, 14%, 94%);
+  --pdTextBase:   hsl(142, 10%, 80%);
+  --pdTextMuted:  hsl(142,  7%, 58%);
+  --pdTextSubtle: hsl(142,  5%, 42%);
+}
+
+/* ── Big Business (225°) ─────────────────────────────────── */
+[data-accent="bigbiz"] {
+  --pdTextStrong: hsl(225, 20%,  3%);
+  --pdTextBase:   hsl(225, 14%,  9%);
+  --pdTextMuted:  hsl(225, 10%, 22%);
+  --pdTextSubtle: hsl(225,  8%, 34%);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.04), 0 2px 6px rgba(0,0,0,.05);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.05), 0 12px 28px rgba(0,0,0,.08);
+  --pdShadowLg: 0 8px 24px rgba(0,0,0,.08), 0 32px 64px rgba(0,0,0,.10);
+}
+[data-accent="bigbiz"][data-theme="dark"] {
+  --pdTextStrong: hsl(225, 18%, 94%);
+  --pdTextBase:   hsl(225, 14%, 80%);
+  --pdTextMuted:  hsl(225, 10%, 58%);
+  --pdTextSubtle: hsl(225,  8%, 42%);
 }
 
 /* ============================================================
@@ -1183,6 +1376,71 @@ html, body {
 /* ============================================================
    TICKET CARD
    ============================================================ */
+/* ============================================================
+   TASK CHECKBOX
+   ============================================================ */
+.TaskCheck {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pdBorderStrong);
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms, border-color 150ms, box-shadow 150ms;
+  flex-shrink: 0;
+  color: var(--pdTextSubtle);
+  padding: 0;
+}
+.TaskCheck:hover {
+  background: var(--pdStatusDoneBg);
+  border-color: var(--pdStatusDoneText);
+  color: var(--pdStatusDoneText);
+  box-shadow: 0 0 0 3px var(--pdStatusDoneBg);
+}
+.TaskCheck:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.TaskCheck svg { opacity: 0; transition: opacity 150ms; }
+.TaskCheck:hover svg { opacity: 1; }
+
+/* ============================================================
+   PRIORITY BADGE
+   ============================================================ */
+.PriorityBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--pdRadiusPill);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.PriorityBadge--blocker {
+  background: color-mix(in srgb, var(--pdPrioBlocker) 12%, transparent);
+  color: var(--pdPrioBlocker);
+  border: 1px solid color-mix(in srgb, var(--pdPrioBlocker) 25%, transparent);
+}
+.PriorityBadge--high {
+  background: color-mix(in srgb, var(--pdPrioHigh) 12%, transparent);
+  color: var(--pdPrioHigh);
+  border: 1px solid color-mix(in srgb, var(--pdPrioHigh) 25%, transparent);
+}
+.PriorityBadge--medium {
+  background: color-mix(in srgb, var(--pdPrioMedium) 15%, transparent);
+  color: var(--pdPrioMedium);
+  border: 1px solid color-mix(in srgb, var(--pdPrioMedium) 30%, transparent);
+}
+.PriorityBadge--low {
+  background: var(--pdSurface2);
+  color: var(--pdTextSubtle);
+  border: 1px solid var(--pdBorder);
+}
+
 .TicketCard {
   position: relative;
   display: flex;
@@ -1278,8 +1536,9 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 14px 14px 10px;
+  padding: 12px 14px 10px;
   gap: 8px;
+  border-bottom: 1px solid var(--pdBorder);
 }
 .Column__headerLeft {
   display: flex;
@@ -1439,12 +1698,13 @@ html, body {
   height: 36px;
   border-radius: 10px;
   background: var(--pdAccentGradient, linear-gradient(145deg, var(--pdAccent05), var(--pdAccent07)));
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 1px 4px rgba(0,0,0,0.22);
   color: #fff;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 .PdSidebar__avatarBtn {
   position: relative;
@@ -1462,6 +1722,13 @@ html, body {
 }
 .PdSidebar__avatarBtn:hover {
   box-shadow: 0 0 0 2px var(--pdAccent05), 0 1px 3px rgba(0,0,0,0.15);
+}
+[data-accent-type="gradient"] .PdSidebar__avatarBtn {
+  background: var(--pdAccentGradient);
+  box-shadow: 0 0 0 2px var(--pdSurface1), inset 0 1px 0 rgba(255,255,255,0.2), 0 1px 3px rgba(0,0,0,0.18);
+}
+[data-accent-type="gradient"] .PdSidebar__avatarBtn:hover {
+  box-shadow: 0 0 0 2.5px var(--pdAccent05), inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 6px rgba(0,0,0,0.2);
 }
 .PdSidebar__avatarImg {
   width: 100%;
@@ -1545,10 +1812,14 @@ html, body {
 [data-accent-type="gradient"] .PdNavItem.is-selected {
   background: var(--pdAccentGradient);
   color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 3px rgba(0,0,0,0.12);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 [data-accent-type="gradient"][data-theme="dark"] .PdNavItem.is-selected {
   background: var(--pdAccentGradient);
   color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 4px rgba(0,0,0,0.25);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 .PdNavItem svg { width: 18px; height: 18px; flex-shrink: 0; }
 .PdNavItem__count {
@@ -1786,6 +2057,10 @@ html, body {
   from { opacity: 0; transform: translateY(5px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 .ModalBackdrop {
   position: fixed;
@@ -1982,6 +2257,11 @@ html, body {
 .PdButton--primary:hover { filter: brightness(0.88); }
 [data-accent-type="gradient"] .PdButton--primary {
   background: var(--pdAccentGradient);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 3px rgba(0,0,0,0.18);
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
+}
+[data-accent-type="gradient"] .PdButton--primary:hover {
+  filter: brightness(1.08) saturate(1.12);
 }
 .PdButton--secondary {
   background: var(--pdSurface1);

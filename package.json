@@ -5,13 +5,15 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.0",
     "@slack/web-api": "^7.2.0",
     "@vercel/kv": "^3.0.0",
     "better-sqlite3": "^11.9.1",
+    "lucide-react": "^1.16.0",
     "next": "14.2.35",
     "node-emoji": "^2.2.0",
     "openai": "^6.36.0",

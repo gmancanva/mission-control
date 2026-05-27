@@ -3,6 +3,8 @@ import path from 'path'
 import fs from 'fs'
 import { DATA_DIR } from '@/lib/data-dir'
 
+export const dynamic = 'force-dynamic'
+
 const CACHE_PATH = path.join(DATA_DIR, 'canva-mentions-cache.json')
 
 export type CanvaReply = {

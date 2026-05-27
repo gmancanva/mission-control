@@ -77,6 +77,7 @@ export async function GET() {
     },
     slack: {
       botTokenSet: !!(getConfig('slack.botToken') ?? process.env.SLACK_BOT_TOKEN),
+      userTokenSet: !!(getConfig('slack.userToken') ?? process.env.SLACK_USER_TOKEN),
       channelIds: getConfig('slack.channelIds') ?? process.env.SLACK_CHANNEL_IDS ?? '',
       myUserId: getConfig('slack.myUserId') ?? process.env.SLACK_MY_USER_ID ?? '',
       source: slackSource(),
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
 
   if (type === 'slack') {
     if (values.botToken) setConfig('slack.botToken', values.botToken)
+    if (values.userToken) setConfig('slack.userToken', values.userToken)
     if (values.channelIds !== undefined) setConfig('slack.channelIds', values.channelIds)
     if (values.myUserId !== undefined) setConfig('slack.myUserId', values.myUserId)
     return NextResponse.json({ ok: true })

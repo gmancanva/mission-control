@@ -178,6 +178,7 @@ type SettingsData = {
   }
   slack: {
     botTokenSet: boolean
+    userTokenSet: boolean
     channelIds: string
     myUserId: string
     source: 'db' | 'env' | 'none'
@@ -445,18 +446,68 @@ function JiraCard({ data, onSaved }: { data: SettingsData['jira']; onSaved: () =
 // ── Google Calendar card ──────────────────────────────────────────────────────
 
 function GoogleCalendarCard({
+  creds,
   calendar,
+  onSaved,
+  urlError,
 }: {
+  creds: SettingsData['googleCreds']
   calendar: SettingsData['googleCalendar']
+  onSaved: () => void
+  urlError?: string | null
 }) {
+  const credsConfigured = creds.source !== 'none'
+  const [editingCreds, setEditingCreds] = useState(!credsConfigured && !calendar.connected)
+  const [form, setForm] = useState({ clientId: '', clientSecret: '' })
+  const [saving, setSaving] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSaveCreds() {
+    if (!form.clientId && !creds.clientIdSet) { setError('Client ID is required'); return }
+    setSaving(true); setError(null)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'google', ...form }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      onSaved()
+      setEditingCreds(false)
+      setForm({ clientId: '', clientSecret: '' })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDisconnect() {
+    setDisconnecting(true)
+    try {
+      await fetch('/api/auth/google/disconnect', { method: 'POST' })
+      onSaved()
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
   const syncLabel = calendar.syncedAt
     ? `Synced ${new Date(calendar.syncedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`
     : null
-  const description = calendar.hasCache
-    ? `Synced directly${syncLabel ? ` · ${syncLabel}` : ''} — ask Claude to refresh anytime`
-    : 'Ask Claude to "refresh my calendar" to pull in this week\'s meetings'
 
-  const status = calendar.hasCache ? <ConnectedBadge /> : undefined
+  const description = calendar.connected
+    ? calendar.email
+      ? `Connected as ${calendar.email}${syncLabel ? ` · ${syncLabel}` : ''}`
+      : `Connected${syncLabel ? ` · ${syncLabel}` : ''}`
+    : credsConfigured && !editingCreds
+    ? 'Credentials saved — authorise Google Calendar access below'
+    : 'Connect Google Calendar to track meetings and capacity'
+
+  const status = calendar.connected ? <ConnectedBadge /> : undefined
+  const showEdit = credsConfigured && !editingCreds ? () => setEditingCreds(true) : undefined
+  const hasChildren = editingCreds || (!editingCreds && credsConfigured && !calendar.connected) || (!!urlError && !calendar.connected) || calendar.connected
 
   return (
     <ConnectionCard
@@ -466,7 +517,107 @@ function GoogleCalendarCard({
       iconBg="#F0F4FF"
       iconColor="#1A73E8"
       status={status}
-    />
+      onEdit={showEdit}
+    >
+      {hasChildren && (
+        <>
+          {/* OAuth error from callback */}
+          {urlError && !calendar.connected && (
+            <div style={{
+              marginBottom: 12, padding: '8px 12px',
+              background: 'var(--pdStatusReviewBg)', border: '1px solid var(--pdStatusReviewBorder)',
+              borderRadius: 6, fontSize: 12, color: 'var(--pdStatusReviewFg)',
+            }}>
+              {(() => { try { return decodeURIComponent(urlError) } catch { return urlError } })()}
+            </div>
+          )}
+
+          {/* Credentials form */}
+          {editingCreds && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{
+                padding: '10px 12px',
+                background: 'var(--pdSurface2)',
+                borderRadius: 6, fontSize: 12, color: 'var(--pdTextMuted)', lineHeight: 1.6,
+              }}>
+                <strong style={{ color: 'var(--pdTextBase)' }}>Setup steps:</strong>
+                <ol style={{ margin: '6px 0 0', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <li>Go to <strong style={{ color: 'var(--pdTextBase)' }}>console.cloud.google.com</strong> → APIs &amp; Services → Credentials</li>
+                  <li>Create an <strong style={{ color: 'var(--pdTextBase)' }}>OAuth 2.0 Client ID</strong> (Web application type)</li>
+                  <li>Enable the <strong style={{ color: 'var(--pdTextBase)' }}>Google Calendar API</strong> in your project</li>
+                  <li>Add authorised redirect URI: <code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>http://127.0.0.1:3000/api/auth/google/callback</code></li>
+                  <li>Copy the <strong style={{ color: 'var(--pdTextBase)' }}>Client ID</strong> and <strong style={{ color: 'var(--pdTextBase)' }}>Client Secret</strong></li>
+                </ol>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field
+                  label="Client ID"
+                  value={form.clientId}
+                  onChange={v => setForm(f => ({ ...f, clientId: v }))}
+                  placeholder={creds.clientIdSet ? '••••••••  (leave blank to keep)' : 'Paste Client ID'}
+                />
+                <Field
+                  label="Client Secret"
+                  value={form.clientSecret}
+                  onChange={v => setForm(f => ({ ...f, clientSecret: v }))}
+                  type="password"
+                  placeholder={creds.clientSecretSet ? '••••••••  (leave blank to keep)' : 'Paste Client Secret'}
+                />
+              </div>
+              {error && <p style={{ fontSize: 12, color: 'var(--pdPrioHigh)', margin: 0 }}>{error}</p>}
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                {credsConfigured && (
+                  <button className="PdButton PdButton--tertiary PdButton--small" onClick={() => { setEditingCreds(false); setError(null) }}>
+                    Cancel
+                  </button>
+                )}
+                <button
+                  className="PdButton PdButton--primary PdButton--small"
+                  onClick={handleSaveCreds}
+                  disabled={saving}
+                  style={{ opacity: saving ? 0.6 : 1 }}
+                >
+                  {saving ? 'Saving…' : 'Save credentials'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* OAuth connect row — creds saved, not yet connected */}
+          {!editingCreds && credsConfigured && !calendar.connected && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: 12, color: 'var(--pdTextMuted)', margin: 0 }}>
+                Click to authorise <strong>read-only</strong> access to Google Calendar — used for capacity planning and meeting context.
+              </p>
+              <a
+                href="/api/auth/google"
+                className="PdButton PdButton--primary PdButton--small"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, textDecoration: 'none', flexShrink: 0, marginLeft: 16 }}
+              >
+                <LinkIcon /> Connect Google
+              </a>
+            </div>
+          )}
+
+          {/* Connected state — show disconnect */}
+          {calendar.connected && !editingCreds && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: 12, color: 'var(--pdTextMuted)', margin: 0 }}>
+                {calendar.hasCache ? `Calendar data synced${syncLabel ? ` on ${syncLabel}` : ''}.` : 'No calendar data yet — trigger a sync to pull in events.'}
+              </p>
+              <button
+                className="PdButton PdButton--tertiary PdButton--small"
+                onClick={handleDisconnect}
+                disabled={disconnecting}
+                style={{ opacity: disconnecting ? 0.5 : 1, color: 'var(--pdPrioHigh)', flexShrink: 0, marginLeft: 16 }}
+              >
+                {disconnecting ? 'Disconnecting…' : 'Disconnect'}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </ConnectionCard>
   )
 }
 
@@ -477,6 +628,7 @@ function SlackCard({ data, onSaved }: { data: SettingsData['slack']; onSaved: ()
   const [editing, setEditing] = useState(!isConfigured)
   const [form, setForm] = useState({
     botToken: '',
+    userToken: '',
     channelIds: data.channelIds,
     myUserId: data.myUserId,
   })
@@ -551,8 +703,8 @@ function SlackCard({ data, onSaved }: { data: SettingsData['slack']; onSaved: ()
             <ol style={{ margin: '6px 0 0', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
               <li>Go to <strong style={{ color: 'var(--pdTextBase)' }}>api.slack.com/apps</strong> → Create New App → From scratch</li>
               <li>Under <strong style={{ color: 'var(--pdTextBase)' }}>OAuth &amp; Permissions</strong>, add bot scopes: <code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>channels:history, users:read, emoji:list, reactions:read, chat:write</code></li>
-              <li>Click <strong style={{ color: 'var(--pdTextBase)' }}>Install to Workspace</strong> and copy the <strong style={{ color: 'var(--pdTextBase)' }}>Bot User OAuth Token</strong> (starts with <code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>xoxb-</code>)</li>
-              <li>Invite the bot to your channels with <code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>/invite @your-bot</code></li>
+              <li>Add user scopes: <code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>channels:history, groups:history, im:history, mpim:history, users:read</code></li>
+              <li>Click <strong style={{ color: 'var(--pdTextBase)' }}>Install to Workspace</strong> — copy both the <strong style={{ color: 'var(--pdTextBase)' }}>Bot Token</strong> (<code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>xoxb-</code>) and <strong style={{ color: 'var(--pdTextBase)' }}>User Token</strong> (<code style={{ fontSize: 11, background: 'var(--pdSurface3)', padding: '1px 4px', borderRadius: 3 }}>xoxp-</code>)</li>
             </ol>
           </div>
           <div style={{ position: 'relative' }}>
@@ -562,7 +714,7 @@ function SlackCard({ data, onSaved }: { data: SettingsData['slack']; onSaved: ()
               onChange={v => setForm(f => ({ ...f, botToken: v }))}
               type={showToken ? 'text' : 'password'}
               placeholder={data.botTokenSet ? '••••••••  (leave blank to keep)' : 'xoxb-...'}
-              hint="Starts with xoxb- — found in OAuth & Permissions after installing"
+              hint="Starts with xoxb- — used for emoji, reactions, and posting replies"
             />
             <button
               type="button"
@@ -572,6 +724,14 @@ function SlackCard({ data, onSaved }: { data: SettingsData['slack']; onSaved: ()
               {showToken ? 'Hide' : 'Show'}
             </button>
           </div>
+          <Field
+            label="User Token (for private channels & DMs)"
+            value={form.userToken}
+            onChange={v => setForm(f => ({ ...f, userToken: v }))}
+            type="password"
+            placeholder={data.userTokenSet ? '••••••••  (leave blank to keep)' : 'xoxp-...'}
+            hint="Starts with xoxp- — enables threads in private channels, DMs, and group DMs"
+          />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Field
               label="Channel IDs"
@@ -998,23 +1158,24 @@ interface AccentTheme {
   name: string
   group: 'solid' | 'gradient'
   swatch: string
+  ring: string  // dominant color used for selected ring
 }
 
 const ACCENTS: AccentTheme[] = [
-  { id: 'orange',    name: 'Default',      group: 'solid',    swatch: '#EE7E36' },
-  { id: 'blue',      name: 'Blueprint',    group: 'solid',    swatch: '#3D7DFF' },
-  { id: 'purple',    name: 'Studio',       group: 'solid',    swatch: '#7B5CFF' },
-  { id: 'teal',      name: 'Canva',        group: 'solid',    swatch: '#00AFA0' },
-  { id: 'rose',      name: 'Raspberry',    group: 'solid',    swatch: '#F05880' },
-  { id: 'slate',     name: 'Monochrome',   group: 'solid',    swatch: '#7A879F' },
-  { id: 'aubergine', name: 'Aubergine',    group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #8B5CF6, #4C1D95)' },
-  { id: 'raspberry', name: 'Raspberry',    group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #EC4899, #9D174D)' },
-  { id: 'chill',     name: 'Chill Vibes',  group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #34D399, #065F46)' },
-  { id: 'banana',    name: 'Banana',       group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #FCD34D, #D97706)' },
-  { id: 'pbj',       name: 'PB&J',         group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #F9A8D4, #C2410C)' },
-  { id: 'seaglass',  name: 'Sea Glass',    group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #A5F3FC, #7C3AED)' },
-  { id: 'mintchip',  name: 'Mint Chip',    group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #86EFAC, #D1FAE5)' },
-  { id: 'bigbiz',    name: 'Big Business', group: 'gradient', swatch: 'radial-gradient(circle at 40% 40%, #3B82F6, #1E1B4B)' },
+  { id: 'orange',    name: 'Default',      group: 'solid',    swatch: '#EE7E36',                                                              ring: '#EE7E36' },
+  { id: 'blue',      name: 'Blueprint',    group: 'solid',    swatch: '#3D7DFF',                                                              ring: '#3D7DFF' },
+  { id: 'purple',    name: 'Studio',       group: 'solid',    swatch: '#7B5CFF',                                                              ring: '#7B5CFF' },
+  { id: 'teal',      name: 'Canva',        group: 'solid',    swatch: '#00AFA0',                                                              ring: '#00AFA0' },
+  { id: 'rose',      name: 'Coral',        group: 'solid',    swatch: '#F05880',                                                              ring: '#F05880' },
+  { id: 'slate',     name: 'Monochrome',   group: 'solid',    swatch: '#7A879F',                                                              ring: '#7A879F' },
+  { id: 'aubergine', name: 'Aubergine',    group: 'gradient', swatch: 'linear-gradient(110deg, #C4B5FD 0%, #7C3AED 45%, #3B0764 100%)',       ring: '#A78BFA' },
+  { id: 'raspberry', name: 'Raspberry',    group: 'gradient', swatch: 'linear-gradient(110deg, #FDA4AF 0%, #E11D48 50%, #881337 100%)',       ring: '#FB7185' },
+  { id: 'chill',     name: 'Chill Vibes',  group: 'gradient', swatch: 'linear-gradient(110deg, #5EEAD4 0%, #0D9488 50%, #042F2E 100%)',       ring: '#2DD4BF' },
+  { id: 'banana',    name: 'Banana',       group: 'gradient', swatch: 'linear-gradient(110deg, #FEF08A 0%, #EAB308 50%, #713F12 100%)',       ring: '#FBBF24' },
+  { id: 'pbj',       name: 'PB&J',         group: 'gradient', swatch: 'linear-gradient(110deg, #FBCFE8 0%, #F43F5E 45%, #7F1D1D 100%)',       ring: '#F43F5E' },
+  { id: 'seaglass',  name: 'Sea Glass',    group: 'gradient', swatch: 'linear-gradient(110deg, #A5F3FC 0%, #0EA5E9 55%, #0C4A6E 100%)',       ring: '#38BDF8' },
+  { id: 'mintchip',  name: 'Mint Chip',    group: 'gradient', swatch: 'linear-gradient(110deg, #BBF7D0 0%, #16A34A 50%, #052E16 100%)',       ring: '#4ADE80' },
+  { id: 'bigbiz',    name: 'Big Business', group: 'gradient', swatch: 'linear-gradient(110deg, #BFDBFE 0%, #2563EB 45%, #0F172A 100%)',       ring: '#60A5FA' },
 ]
 
 const ACCENT_GROUPS: Array<{ label: string; group: 'solid' | 'gradient' }> = [
@@ -1030,6 +1191,8 @@ const COLOR_MODES: { id: ColorMode; label: string }[] = [
 
 function AppearanceSection() {
   const { colorMode, setColorMode, accent, setAccent, font, setFont } = useTheme()
+  const [hoveredAccent, setHoveredAccent] = useState<string | null>(null)
+  const displayName = ACCENTS.find(a => a.id === (hoveredAccent ?? accent))?.name ?? ''
 
   return (
     <section>
@@ -1082,50 +1245,76 @@ function AppearanceSection() {
 
         {/* Accent palette */}
         <div>
-          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--pdTextStrong)', marginBottom: 12 }}>
-            Accent colour
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--pdTextStrong)' }}>Accent colour</div>
+            <div style={{ fontSize: 12, color: 'var(--pdTextMuted)', fontWeight: 500, minWidth: 80, textAlign: 'right', transition: 'color 0.1s' }}>
+              {displayName}
+            </div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {ACCENT_GROUPS.map(({ label, group }) => (
-              <div key={group}>
-                <div style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase',
-                  color: 'var(--pdTextSubtle)', marginBottom: 8,
-                }}>
-                  {label}
-                </div>
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  {ACCENTS.filter(a => a.group === group).map((a) => (
-                    <button
-                      key={a.id}
-                      title={a.name}
-                      onClick={() => setAccent(a.id)}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: '50%',
-                        border: accent === a.id
-                          ? `3px solid var(--pdAccent05)`
-                          : '2px solid transparent',
-                        outline: accent === a.id ? `2px solid var(--pdSurface1)` : 'none',
-                        outlineOffset: accent === a.id ? '-5px' : 0,
-                        background: a.swatch,
-                        cursor: 'pointer',
-                        padding: 0,
-                        boxShadow: accent === a.id
-                          ? `0 0 0 3px var(--pdAccentA03)`
-                          : '0 1px 3px rgba(0,0,0,0.15)',
-                        transition: 'box-shadow 0.12s, transform 0.12s',
-                        transform: accent === a.id ? 'scale(1.15)' : 'scale(1)',
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-          <div style={{ fontSize: 11, color: 'var(--pdTextSubtle)', marginTop: 10 }}>
-            {ACCENTS.find(a => a.id === accent)?.name}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Solid circles */}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {ACCENTS.filter(a => a.group === 'solid').map((a) => {
+                const isActive = accent === a.id
+                const isHovered = hoveredAccent === a.id
+                return (
+                  <button
+                    key={a.id}
+                    title={a.name}
+                    onClick={() => setAccent(a.id)}
+                    onMouseEnter={() => setHoveredAccent(a.id)}
+                    onMouseLeave={() => setHoveredAccent(null)}
+                    style={{
+                      width: 28, height: 28,
+                      borderRadius: '50%',
+                      border: 'none',
+                      background: a.swatch,
+                      cursor: 'pointer',
+                      padding: 0,
+                      flexShrink: 0,
+                      boxShadow: isActive
+                        ? `0 0 0 2.5px var(--pdSurface0), 0 0 0 4.5px ${a.ring}`
+                        : isHovered
+                          ? `0 2px 8px rgba(0,0,0,0.22), 0 0 0 1px rgba(0,0,0,0.06)`
+                          : '0 1px 4px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06)',
+                      transition: 'box-shadow 0.12s, transform 0.12s',
+                      transform: isActive ? 'scale(1.14)' : isHovered ? 'scale(1.07)' : 'scale(1)',
+                    }}
+                  />
+                )
+              })}
+            </div>
+            {/* Gradient pills */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 7 }}>
+              {ACCENTS.filter(a => a.group === 'gradient').map((a) => {
+                const isActive = accent === a.id
+                const isHovered = hoveredAccent === a.id
+                return (
+                  <button
+                    key={a.id}
+                    title={a.name}
+                    onClick={() => setAccent(a.id)}
+                    onMouseEnter={() => setHoveredAccent(a.id)}
+                    onMouseLeave={() => setHoveredAccent(null)}
+                    style={{
+                      height: 26,
+                      borderRadius: 8,
+                      border: 'none',
+                      background: a.swatch,
+                      cursor: 'pointer',
+                      padding: 0,
+                      boxShadow: isActive
+                        ? `0 0 0 2px var(--pdSurface0), 0 0 0 4px ${a.ring}, inset 0 1px 0 rgba(255,255,255,0.25)`
+                        : isHovered
+                          ? `0 3px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.2)`
+                          : `0 1px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.15)`,
+                      transition: 'box-shadow 0.12s, transform 0.12s',
+                      transform: isActive ? 'scale(1.06)' : isHovered ? 'scale(1.03)' : 'scale(1)',
+                    }}
+                  />
+                )
+              })}
+            </div>
           </div>
         </div>
 
@@ -1230,7 +1419,10 @@ export default function SettingsView({ urlError, canvaUrlError }: Props) {
               urlError={canvaUrlError}
             />
             <GoogleCalendarCard
+              creds={data.googleCreds}
               calendar={data.googleCalendar}
+              onSaved={load}
+              urlError={urlError}
             />
           </div>
         )}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { ExternalLink, Plus, Bookmark, Check, Circle, MessageSquare, ChevronDown, RefreshCw } from 'lucide-react'
 import SlackText from '@/components/SlackText'
 import ReactionBar from '@/components/ReactionBar'
 import Tooltip from '@/components/Tooltip'
@@ -315,15 +316,15 @@ function FileAttachment({ file }: { file: NonNullable<ThreadMessage['files']>[nu
     return (
       <a href={fullSrc} target="_blank" rel="noopener noreferrer" className="block mt-1.5 max-w-xs">
         {thumbSrc
-          ? <img src={thumbSrc} alt={file.name} loading="lazy" className="rounded-md border border-gray-200 dark:border-gray-700 max-h-48 object-cover" />
-          : <span className="text-xs text-blue-600 dark:text-blue-400 underline">{file.name}</span>}
+          ? <img src={thumbSrc} alt={file.name} loading="lazy" className="rounded-md max-h-48 object-cover" style={{ border: '1px solid var(--pdBorder)' }} />
+          : <span className="text-xs underline" style={{ color: 'var(--pdAccent06)' }}>{file.name}</span>}
       </a>
     )
   }
   if (isVideo) {
     return (
       <a href={file.url} target="_blank" rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 mt-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+        className="inline-flex items-center gap-1.5 mt-1.5 text-xs hover:underline" style={{ color: 'var(--pdAccent06)' }}>
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 2l7 4-7 4V2z" fill="currentColor"/></svg>
         {file.name}
       </a>
@@ -331,7 +332,7 @@ function FileAttachment({ file }: { file: NonNullable<ThreadMessage['files']>[nu
   }
   return (
     <a href={file.url} target="_blank" rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 mt-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline">
+      className="inline-flex items-center gap-1.5 mt-1.5 text-xs hover:underline" style={{ color: 'var(--pdAccent06)' }}>
       <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M7 1H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4L7 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/><path d="M7 1v3h3" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
       {file.name}
     </a>
@@ -373,7 +374,7 @@ function Avatar({ author, avatarUrl, size = 24 }: { author: string; avatarUrl?: 
   return resolvedUrl ? (
     <img src={resolvedUrl} alt={author} width={size} height={size}
       onError={() => setResolvedUrl(undefined)}
-      className="rounded-full object-cover shrink-0 border border-gray-200 dark:border-gray-700" />
+      className="rounded-full object-cover shrink-0" style={{ border: '1px solid var(--pdBorder)' }} />
   ) : (
     <div style={{ width: size, height: size, fontSize: size * 0.38 }}
       className={`${color} rounded-full shrink-0 flex items-center justify-center text-white font-semibold`}>
@@ -390,7 +391,7 @@ function MentionText({ text }: { text: string }) {
     <>
       {parts.map((part, i) =>
         part.startsWith('@')
-          ? <span key={i} className="text-blue-600 dark:text-blue-400 font-medium">{part}</span>
+          ? <span key={i} className="font-medium" style={{ color: 'var(--pdAccent06)' }}>{part}</span>
           : <span key={i}>{part}</span>
       )}
     </>
@@ -407,7 +408,7 @@ function FigmaCardBody({ mention }: { mention: FigmaMention }) {
     <div>
       {/* Frame thumbnail */}
       {mention.frame_thumbnail_url && (
-        <div className="mb-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-sm">
+        <div className="mb-2 rounded-lg overflow-hidden max-w-sm" style={{ border: '1px solid var(--pdBorder)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={mention.frame_thumbnail_url}
@@ -421,14 +422,14 @@ function FigmaCardBody({ mention }: { mention: FigmaMention }) {
 
       {/* Context: file + node */}
       <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-        <span className="text-sm text-gray-500 dark:text-gray-400 font-medium">{mention.file_name}</span>
+        <span className="text-sm font-medium" style={{ color: 'var(--pdTextMuted)' }}>{mention.file_name}</span>
         {mention.node_id && (
-          <span className="text-sm text-gray-400 dark:text-gray-600">· on frame</span>
+          <span className="text-sm" style={{ color: 'var(--pdTextSubtle)' }}>· on frame</span>
         )}
       </div>
 
       {/* Comment text */}
-      <div className="text-base text-gray-800 dark:text-gray-200 leading-relaxed">
+      <div className="text-base leading-relaxed" style={{ color: 'var(--pdTextBase)' }}>
         <MentionText text={mention.text} />
       </div>
 
@@ -439,13 +440,9 @@ function FigmaCardBody({ mention }: { mention: FigmaMention }) {
             onClick={(e) => { e.stopPropagation(); setShowReplies(p => !p) }}
             className="inline-flex items-center gap-1 text-sm text-rose-600 dark:text-rose-400 hover:text-rose-800 dark:hover:text-rose-200 transition-colors"
           >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-              <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h7A1.5 1.5 0 0 1 11 2.5v5A1.5 1.5 0 0 1 9.5 9H6.5L4 11V9H2.5A1.5 1.5 0 0 1 1 7.5v-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-            </svg>
+            <MessageSquare size={11} />
             {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" className={`transition-transform ${showReplies ? 'rotate-180' : ''}`}>
-              <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <ChevronDown size={12} className={`transition-transform ${showReplies ? 'rotate-180' : ''}`} />
           </button>
 
           {showReplies && (
@@ -454,9 +451,9 @@ function FigmaCardBody({ mention }: { mention: FigmaMention }) {
                 <div key={r.id} className="flex gap-2 items-start">
                   <Avatar author={r.author} avatarUrl={r.author_avatar_url} size={20} />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-1.5">{r.author}</span>
-                    <span className="text-sm text-gray-400 dark:text-gray-600">{formatDate(r.created_at)}</span>
-                    <div className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed">
+                    <span className="text-sm font-semibold mr-1.5" style={{ color: 'var(--pdTextMuted)' }}>{r.author}</span>
+                    <span className="text-sm" style={{ color: 'var(--pdTextSubtle)' }}>{formatDate(r.created_at)}</span>
+                    <div className="text-sm mt-0.5 leading-relaxed" style={{ color: 'var(--pdTextBase)' }}>
                       <MentionText text={r.text} />
                     </div>
                   </div>
@@ -480,7 +477,7 @@ function CanvaCardBody({ mention }: { mention: CanvaMention }) {
     <div>
       {/* Design thumbnail */}
       {mention.design_thumbnail_url && (
-        <div className="mb-2 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 max-w-sm">
+        <div className="mb-2 rounded-lg overflow-hidden max-w-sm" style={{ border: '1px solid var(--pdBorder)' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={mention.design_thumbnail_url}
@@ -493,10 +490,10 @@ function CanvaCardBody({ mention }: { mention: CanvaMention }) {
       )}
 
       {/* Design name context */}
-      <div className="text-sm text-gray-500 dark:text-gray-400 font-medium mb-1.5">{mention.design_title}</div>
+      <div className="text-sm font-medium mb-1.5" style={{ color: 'var(--pdTextMuted)' }}>{mention.design_title}</div>
 
       {/* Comment text */}
-      <div className="text-base text-gray-800 dark:text-gray-200 leading-relaxed">
+      <div className="text-base leading-relaxed" style={{ color: 'var(--pdTextBase)' }}>
         <MentionText text={mention.text} />
       </div>
 
@@ -507,13 +504,9 @@ function CanvaCardBody({ mention }: { mention: CanvaMention }) {
             onClick={(e) => { e.stopPropagation(); setShowReplies(p => !p) }}
             className="inline-flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 transition-colors"
           >
-            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-              <path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h7A1.5 1.5 0 0 1 11 2.5v5A1.5 1.5 0 0 1 9.5 9H6.5L4 11V9H2.5A1.5 1.5 0 0 1 1 7.5v-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-            </svg>
+            <MessageSquare size={11} />
             {replies.length} {replies.length === 1 ? 'reply' : 'replies'}
-            <svg width="9" height="9" viewBox="0 0 10 10" fill="none" className={`transition-transform ${showReplies ? 'rotate-180' : ''}`}>
-              <path d="M2 4l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+            <ChevronDown size={12} className={`transition-transform ${showReplies ? 'rotate-180' : ''}`} />
           </button>
 
           {showReplies && (
@@ -522,9 +515,9 @@ function CanvaCardBody({ mention }: { mention: CanvaMention }) {
                 <div key={r.id} className="flex gap-2 items-start">
                   <Avatar author={r.author} avatarUrl={r.author_avatar_url} size={20} />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-semibold text-gray-600 dark:text-gray-400 mr-1.5">{r.author}</span>
-                    <span className="text-sm text-gray-400 dark:text-gray-600">{formatDate(r.created_at)}</span>
-                    <div className="text-sm text-gray-700 dark:text-gray-300 mt-0.5 leading-relaxed">
+                    <span className="text-sm font-semibold mr-1.5" style={{ color: 'var(--pdTextMuted)' }}>{r.author}</span>
+                    <span className="text-sm" style={{ color: 'var(--pdTextSubtle)' }}>{formatDate(r.created_at)}</span>
+                    <div className="text-sm mt-0.5 leading-relaxed" style={{ color: 'var(--pdTextBase)' }}>
                       <MentionText text={r.text} />
                     </div>
                   </div>
@@ -542,11 +535,11 @@ function ThreadMessages({ thread, syncedAt, live }: { thread: ThreadMessage[]; s
   return (
     <div className="mt-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-purple-600 dark:text-purple-400">{thread.length} messages</span>
+        <span className="text-sm font-medium" style={{ color: 'var(--pdAccent06)' }}>{thread.length} messages</span>
         {live
-          ? <span className="text-sm text-green-600 dark:text-green-500">Live</span>
+          ? <span className="text-sm" style={{ color: 'var(--pdStatusDoneFg)' }}>Live</span>
           : syncedAt && (
-            <span className="text-sm text-gray-400 dark:text-gray-600">
+            <span className="text-sm" style={{ color: 'var(--pdTextSubtle)' }}>
               Cached {new Date(syncedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
             </span>
           )}
@@ -554,18 +547,18 @@ function ThreadMessages({ thread, syncedAt, live }: { thread: ThreadMessage[]; s
       {thread.map((msg, i) => (
         <div key={msg.ts || i} className="flex gap-2.5 items-start">
           <Avatar author={msg.author} avatarUrl={msg.avatar_url} size={26} />
-          <div className={`flex-1 min-w-0 rounded-xl px-3 py-2 ${
+          <div className="flex-1 min-w-0 rounded-xl px-3 py-2" style={
             msg.is_parent
-              ? 'bg-gray-100 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700'
+              ? { background: 'var(--pdSurface2)', border: '1px solid var(--pdBorder)' }
               : msg.is_me
-                ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40'
-                : 'bg-gray-50 dark:bg-gray-900/60'
-          }`}>
-            <div className={`text-sm font-semibold mb-1 ${msg.is_me ? 'text-blue-700 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                ? { background: 'var(--pdAccent01)', border: '1px solid var(--pdAccent02)' }
+                : { background: 'var(--pdSurface1)' }
+          }>
+            <div className="text-sm font-semibold mb-1" style={{ color: msg.is_me ? 'var(--pdAccent07)' : 'var(--pdTextMuted)' }}>
               {msg.author}{msg.is_me ? ' (you)' : ''}
-              {msg.is_parent && <span className="ml-1 font-normal text-gray-400 dark:text-gray-600">(original)</span>}
+              {msg.is_parent && <span className="ml-1 font-normal" style={{ color: 'var(--pdTextSubtle)' }}>(original)</span>}
             </div>
-            <div className={`text-sm leading-relaxed ${msg.is_me ? 'text-blue-900 dark:text-blue-200' : 'text-gray-700 dark:text-gray-300'}`}>
+            <div className="text-sm leading-relaxed" style={{ color: msg.is_me ? 'var(--pdAccent08)' : 'var(--pdTextBase)' }}>
               <SlackText text={msg.text} />
             </div>
             {msg.reactions && msg.reactions.length > 0 && (
@@ -692,15 +685,16 @@ function EntryCard({
       onClick={isClickable ? thread.toggle : undefined}
       className={`border rounded-xl p-4 transition-all ${isClickable ? 'cursor-pointer select-none' : ''} ${
         isCompleted
-          ? 'opacity-50 bg-gray-50 dark:bg-gray-900/50 border-gray-200 dark:border-gray-800'
+          ? 'opacity-50 border-[var(--pdBorder)]'
           : entry.isPinned
             ? 'border-amber-400/60 bg-amber-50/50 dark:bg-amber-950/10 dark:border-amber-700/50'
             : isBookmarked
               ? 'border-sky-400/50 bg-sky-50/50 dark:bg-sky-950/20 dark:border-sky-700/40'
               : thread.open
-                ? 'bg-white dark:bg-gray-900 border-purple-300 dark:border-purple-700'
-                : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 hover:border-gray-300 dark:hover:border-gray-700'
+                ? 'border-[var(--pdAccent04)]'
+                : 'border-[var(--pdBorder)] hover:border-[var(--pdBorderStrong)]'
       }`}
+      style={!entry.isPinned && !isBookmarked ? { background: 'var(--pdSurface0)' } : undefined}
     >
       <div className="flex items-start gap-3">
         <div className="shrink-0 mt-0.5">
@@ -712,23 +706,23 @@ function EntryCard({
             {entry.author && (
               <>
                 <Avatar author={entry.author} avatarUrl={entry.avatarUrl} size={24} />
-                <span className="text-sm font-bold text-gray-900 dark:text-gray-50">{entry.author}</span>
+                <span className="text-sm font-bold" style={{ color: 'var(--pdTextStrong)' }}>{entry.author}</span>
               </>
             )}
-            <span className="text-xs text-gray-600 dark:text-gray-400">{formatDate(entry.date)}</span>
+            <span className="text-xs" style={{ color: 'var(--pdTextMuted)' }}>{formatDate(entry.date)}</span>
             <Tooltip label={entry.project}>
-              <span className="text-xs text-gray-400 dark:text-gray-500 truncate max-w-[200px]">{entry.project}</span>
+              <span className="text-xs truncate max-w-[200px]" style={{ color: 'var(--pdTextSubtle)' }}>{entry.project}</span>
             </Tooltip>
             {entry.isPinned && <span className="text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 px-1.5 py-0.5 rounded">Decision</span>}
             {isBookmarked && !entry.isPinned && <span className="text-xs font-medium text-sky-600 dark:text-sky-400">Bookmarked</span>}
           </div>
 
-          <div className={isCompleted ? 'line-through text-gray-400 dark:text-gray-600' : ''}>
+          <div className={isCompleted ? 'line-through' : ''} style={isCompleted ? { color: 'var(--pdTextSubtle)' } : undefined}>
             {entry.source === 'figma' && entry.figmaMention
               ? <FigmaCardBody mention={entry.figmaMention} />
               : entry.source === 'canva' && entry.canvaMention
                 ? <CanvaCardBody mention={entry.canvaMention} />
-                : <div className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                : <div className="text-sm leading-relaxed" style={{ color: 'var(--pdTextBase)' }}>
                     {entry.source === 'slack' ? <SlackText text={entry.summary} /> : entry.summary}
                   </div>
             }
@@ -744,29 +738,23 @@ function EntryCard({
           <div className="flex flex-wrap gap-2 mt-3" onClick={e => e.stopPropagation()}>
             {entry.link && entry.link !== '#' && (
               <a href={entry.link} target="_blank" rel="noopener noreferrer" className={BTN_DEFAULT}>
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M7 1h4v4M11 1L5.5 6.5M5 2H2a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1V8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <ExternalLink size={11} />
                 Open
               </a>
             )}
 
             <button onClick={() => onNewTask(entry.summary.slice(0, 120))} className={BTN_DEFAULT}>
-              <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+              <Plus size={11} />
               New task
             </button>
 
             <button onClick={() => onToggleFlag(entry.sourceId, 'bookmarked')} className={isBookmarked ? BTN_ACTIVE_BLUE : BTN_DEFAULT}>
-              {isBookmarked
-                ? <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"><path d="M2 1h8a1 1 0 0 1 1 1v9l-5-3-5 3V2a1 1 0 0 1 1-1z"/></svg>
-                : <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 1h8a1 1 0 0 1 1 1v9l-5-3-5 3V2a1 1 0 0 1 1-1z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
-              }
+              <Bookmark size={11} fill={isBookmarked ? 'currentColor' : 'none'} />
               {isBookmarked ? 'Bookmarked' : 'Bookmark'}
             </button>
 
             <button onClick={() => onToggleFlag(entry.sourceId, 'completed')} className={isCompleted ? BTN_ACTIVE_GREEN : BTN_DEFAULT}>
-              {isCompleted
-                ? <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                : <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.4"/></svg>
-              }
+              {isCompleted ? <Check size={11} /> : <Circle size={11} />}
               {isCompleted ? 'Resolved' : 'Resolve'}
             </button>
 
@@ -779,7 +767,7 @@ function EntryCard({
                 className={BTN_DEFAULT}
                 onClick={e => e.stopPropagation()}
               >
-                <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h7A1.5 1.5 0 0 1 11 2.5v5A1.5 1.5 0 0 1 9.5 9H6.5L4 11V9H2.5A1.5 1.5 0 0 1 1 7.5v-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+                <MessageSquare size={11} />
                 Reply in Figma
               </a>
             )}
@@ -790,7 +778,7 @@ function EntryCard({
             thread.state === 'error'
               ? <div onClick={e => e.stopPropagation()}><p className="mt-2 text-xs text-red-400">Failed to load thread. Check that the bot token has <code>channels:history</code> scope.</p></div>
               : thread.state === 'loaded' && thread.thread === null
-                ? <div onClick={e => e.stopPropagation()}><p className="mt-2 text-sm text-gray-400 dark:text-gray-600 italic">Thread not found — add a Slack bot token in Settings to fetch live.</p></div>
+                ? <div onClick={e => e.stopPropagation()}><p className="mt-2 text-sm italic" style={{ color: 'var(--pdTextSubtle)' }}>Thread not found — add a Slack bot token in Settings to fetch live.</p></div>
                 : thread.thread && thread.thread.length > 0
                   ? (
                     <div className="mt-3 space-y-3" onClick={e => e.stopPropagation()}>
@@ -812,7 +800,7 @@ function EntryCard({
                             onClick={showReply ? () => setShowReply(false) : draftThreadReply}
                             className={showReply ? BTN_ACTIVE_BLUE : BTN_DEFAULT}
                           >
-                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M1 2.5A1.5 1.5 0 0 1 2.5 1h7A1.5 1.5 0 0 1 11 2.5v5A1.5 1.5 0 0 1 9.5 9H6.5L4 11V9H2.5A1.5 1.5 0 0 1 1 7.5v-5z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/></svg>
+                            <MessageSquare size={11} />
                             Reply
                           </button>
                           <button
@@ -833,17 +821,13 @@ function EntryCard({
                         <div className="rounded-lg border border-sky-200 dark:border-sky-800/50 bg-sky-50/50 dark:bg-sky-950/20 p-3 space-y-2">
                           {replyCopied ? (
                             <div className="flex items-center gap-2 py-2">
-                              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="text-green-500 shrink-0">
-                                <path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                              <span className="text-sm font-medium text-green-700 dark:text-green-400">Draft copied — paste it in the Slack thread</span>
+                              <Check size={15} className="shrink-0" style={{ color: 'var(--pdStatusDoneFg)' }} />
+                              <span className="text-sm font-medium" style={{ color: 'var(--pdStatusDoneFg)' }}>Draft copied — paste it in the Slack thread</span>
                             </div>
                           ) : replySent ? (
                             <div className="flex items-center gap-2 py-2">
-                              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" className="text-green-500 shrink-0">
-                                <path d="M3 8l3.5 3.5L13 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
-                              <span className="text-sm font-medium text-green-700 dark:text-green-400">Reply sent</span>
+                              <Check size={15} className="shrink-0" style={{ color: 'var(--pdStatusDoneFg)' }} />
+                              <span className="text-sm font-medium" style={{ color: 'var(--pdStatusDoneFg)' }}>Reply sent</span>
                             </div>
                           ) : (
                             <>
@@ -854,9 +838,7 @@ function EntryCard({
                                   disabled={replyGenerating}
                                   className="inline-flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 disabled:opacity-50 transition-colors"
                                 >
-                                  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" className={replyGenerating ? 'animate-spin' : ''}>
-                                    <path d="M10 6A4 4 0 1 1 6 2M6 2l2-2M6 2l2 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                                  </svg>
+                                  <RefreshCw size={11} className={replyGenerating ? 'animate-spin' : ''} />
                                   {replyGenerating ? 'Generating…' : 'Regenerate'}
                                 </button>
                               </div>
@@ -865,7 +847,8 @@ function EntryCard({
                                 onChange={e => setReplyDraft(e.target.value)}
                                 placeholder={replyGenerating ? 'Drafting reply…' : 'Your reply…'}
                                 rows={3}
-                                className="w-full text-sm bg-white dark:bg-gray-800 border border-sky-200 dark:border-sky-800/60 rounded-lg px-3 py-2 text-gray-800 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:border-sky-400 dark:focus:border-sky-600 resize-none leading-relaxed"
+                                className="w-full text-sm rounded-lg px-3 py-2 resize-none leading-relaxed focus:outline-none border border-sky-200 dark:border-sky-800/60 focus:border-sky-400 dark:focus:border-sky-600"
+                                style={{ background: 'var(--pdSurface0)', color: 'var(--pdTextBase)' }}
                               />
                               {replyError && <p className="text-sm text-red-500">{replyError}</p>}
                               <div className="flex gap-2">
@@ -876,7 +859,7 @@ function EntryCard({
                                 >
                                   {replySending ? 'Opening…' : 'Copy & Open in Slack'}
                                 </button>
-                                <button onClick={() => setShowReply(false)} className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 px-2 py-1.5 transition-colors">
+                                <button onClick={() => setShowReply(false)} className="text-sm px-2 py-1.5 transition-colors" style={{ color: 'var(--pdTextMuted)' }}>
                                   Cancel
                                 </button>
                               </div>
@@ -966,102 +949,133 @@ export default function CommsTrail({
     }
   }
 
-  const dotColor: Record<'jira' | 'slack' | 'canva' | 'figma', string> = {
-    jira: 'bg-blue-500',
-    slack: 'bg-purple-500',
-    canva: 'bg-violet-500',
-    figma: 'bg-rose-500',
-  }
+
 
   return (
     <>
     <div className="max-w-5xl mx-auto space-y-4">
       {/* ── Filter / view bar ── */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
         {/* View toggle */}
-        <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 text-sm">
-          <button
-            onClick={() => setViewMode('feed')}
-            className={`px-3 py-1 rounded-md transition-colors ${
-              viewMode === 'feed'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            Feed
-          </button>
-          <button
-            onClick={() => setViewMode('timeline')}
-            className={`px-3 py-1 rounded-md transition-colors ${
-              viewMode === 'timeline'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm'
-                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-            }`}
-          >
-            Timeline
-          </button>
+        <div style={{ display: 'inline-flex', background: 'var(--pdSurface2)', border: '1px solid var(--pdBorder)', borderRadius: 8, padding: 2, gap: 2 }}>
+          {(['feed', 'timeline'] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              style={{
+                padding: '4px 12px',
+                borderRadius: 6,
+                fontSize: 13,
+                fontWeight: 500,
+                border: 'none',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                transition: 'background 120ms, color 120ms, box-shadow 120ms',
+                background: viewMode === mode ? 'var(--pdSurface1)' : 'transparent',
+                color: viewMode === mode ? 'var(--pdTextStrong)' : 'var(--pdTextSubtle)',
+                boxShadow: viewMode === mode ? 'var(--pdShadowSm)' : 'none',
+              }}
+            >
+              {mode === 'feed' ? 'Feed' : 'Timeline'}
+            </button>
+          ))}
         </div>
 
         {/* Platform filter */}
-        <div className="flex items-center gap-1 text-sm">
-          {(['all', 'slack', 'canva', 'figma', 'jira'] as const).map(p => (
-            <button
-              key={p}
-              onClick={() => setPlatformFilter(p)}
-              className={`flex items-center gap-1 px-2.5 py-1 rounded-full border transition-colors ${
-                platformFilter === p
-                  ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 border-gray-800 dark:border-gray-200'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
-              {p === 'slack' && <SlackLogo size={11} />}
-              {p === 'canva' && <CanvaLogo size={11} />}
-              {p === 'figma' && <FigmaLogo size={11} />}
-              {p === 'jira' && <JiraLogo size={11} />}
-              <span className="capitalize">{p === 'all' ? `All (${counts.all})` : `${p.charAt(0).toUpperCase() + p.slice(1)} (${counts[p]})`}</span>
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {(['all', 'slack', 'canva', 'figma', 'jira'] as const).map(p => {
+            const isActive = platformFilter === p
+            return (
+              <button
+                key={p}
+                onClick={() => setPlatformFilter(p)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '4px 10px',
+                  borderRadius: 99,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: `1px solid ${isActive ? 'var(--pdBorderStrong)' : 'var(--pdBorder)'}`,
+                  background: isActive ? 'var(--pdSurface3)' : 'transparent',
+                  color: isActive ? 'var(--pdTextStrong)' : 'var(--pdTextSubtle)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'all 120ms',
+                }}
+              >
+                {p === 'slack' && <SlackLogo size={11} />}
+                {p === 'canva' && <CanvaLogo size={11} />}
+                {p === 'figma' && <FigmaLogo size={11} />}
+                {p === 'jira' && <JiraLogo size={11} />}
+                <span>{p === 'all' ? `All (${counts.all})` : `${p.charAt(0).toUpperCase() + p.slice(1)} (${counts[p]})`}</span>
+              </button>
+            )
+          })}
         </div>
 
         {/* Divider */}
-        <div className="w-px h-5 bg-gray-200 dark:bg-gray-700" />
+        <div style={{ width: 1, height: 20, background: 'var(--pdBorder)' }} />
 
         {/* Time filter */}
-        <div className="flex items-center gap-1 text-sm">
-          {(['today', 'week', 'month', 'all'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTimeFilter(t)}
-              className={`px-2.5 py-1 rounded-full border transition-colors ${
-                timeFilter === t
-                  ? 'bg-gray-800 dark:bg-gray-200 text-white dark:text-gray-900 border-gray-800 dark:border-gray-200'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-            >
-              {t === 'today' ? 'Today' : t === 'week' ? '7 days' : t === 'month' ? '30 days' : 'All time'}
-            </button>
-          ))}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          {(['today', 'week', 'month', 'all'] as const).map(t => {
+            const isActive = timeFilter === t
+            return (
+              <button
+                key={t}
+                onClick={() => setTimeFilter(t)}
+                style={{
+                  padding: '4px 10px',
+                  borderRadius: 99,
+                  fontSize: 12,
+                  fontWeight: 500,
+                  border: `1px solid ${isActive ? 'var(--pdBorderStrong)' : 'var(--pdBorder)'}`,
+                  background: isActive ? 'var(--pdSurface3)' : 'transparent',
+                  color: isActive ? 'var(--pdTextStrong)' : 'var(--pdTextSubtle)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  transition: 'all 120ms',
+                }}
+              >
+                {t === 'today' ? 'Today' : t === 'week' ? '7 days' : t === 'month' ? '30 days' : 'All time'}
+              </button>
+            )
+          })}
         </div>
 
         {/* Bookmark filter + resolved toggle */}
-        <div className="ml-auto flex items-center gap-2">
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             onClick={() => setShowBookmarkedOnly(p => !p)}
-            className={`text-sm px-2.5 py-1 rounded-full border transition-colors ${
-              showBookmarkedOnly
-                ? 'border-sky-400 text-sky-600 dark:text-sky-400 dark:border-sky-700 bg-sky-50 dark:bg-sky-950/30'
-                : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-gray-300'
-            }`}
+            style={{
+              fontSize: 12,
+              padding: '4px 10px',
+              borderRadius: 99,
+              border: `1px solid ${showBookmarkedOnly ? 'var(--pdAccent04)' : 'var(--pdBorder)'}`,
+              color: showBookmarkedOnly ? 'var(--pdAccent06)' : 'var(--pdTextSubtle)',
+              background: showBookmarkedOnly ? 'var(--pdAccent01)' : 'transparent',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'all 120ms',
+            }}
           >
             {showBookmarkedOnly ? '★ Bookmarked' : '☆ Bookmarked'}
           </button>
           <button
             onClick={() => setShowCompleted(p => !p)}
-            className={`text-sm px-2.5 py-1 rounded-full border transition-colors ${
-              showCompleted
-                ? 'border-green-400 text-green-600 dark:text-green-400 dark:border-green-700'
-                : 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 hover:border-gray-300'
-            }`}
+            style={{
+              fontSize: 12,
+              padding: '4px 10px',
+              borderRadius: 99,
+              border: `1px solid ${showCompleted ? 'var(--pdStatusDoneBorder)' : 'var(--pdBorder)'}`,
+              color: showCompleted ? 'var(--pdStatusDoneText)' : 'var(--pdTextSubtle)',
+              background: 'transparent',
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              transition: 'all 120ms',
+            }}
           >
             {showCompleted ? '✓ Show resolved' : '○ Hide resolved'}
           </button>
@@ -1070,8 +1084,8 @@ export default function CommsTrail({
 
       {/* ── Empty state ── */}
       {filtered.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-gray-400 dark:text-gray-600">
-          <p className="text-sm">
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '96px 0', color: 'var(--pdTextSubtle)' }}>
+          <p style={{ fontSize: 14 }}>
             {allEntries.length === 0
               ? 'No messages yet. Sync Jira and Slack data first.'
               : 'No items match the current filters.'}
@@ -1094,23 +1108,30 @@ export default function CommsTrail({
           {grouped.map(group => (
             <div key={group.label} className="relative">
               {/* Date label */}
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">
-                  {group.label}
-                </span>
-                <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                <span className="PdSectionTitle" style={{ whiteSpace: 'nowrap' }}>{group.label}</span>
+                <div style={{ flex: 1, height: 1, background: 'var(--pdBorder)' }} />
               </div>
 
               {/* Items with timeline line */}
-              <div className="relative pl-6">
-                {/* Vertical line */}
-                <div className="absolute left-2 top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-800" />
+              <div style={{ position: 'relative', paddingLeft: 22 }}>
+                {/* Vertical line — stops 20px before bottom so it doesn't bleed past the last dot */}
+                <div style={{ position: 'absolute', left: 7, top: 8, bottom: 20, width: 1, background: 'var(--pdBorder)' }} />
 
                 <div className="space-y-3">
                   {group.entries.map(entry => (
-                    <div key={entry.id} className="relative">
-                      {/* Timeline dot */}
-                      <div className={`absolute -left-4 top-4 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-950 ${dotColor[entry.source]}`} />
+                    <div key={entry.id} style={{ position: 'relative' }}>
+                      {/* Timeline dot — centered on the line (container paddingLeft 22, line at left 7, dot left-edge at 3 = center at 7) */}
+                      <div style={{
+                        position: 'absolute',
+                        left: -19,
+                        top: 18,
+                        width: 8,
+                        height: 8,
+                        borderRadius: '50%',
+                        border: '2px solid var(--pdSurface0)',
+                        background: entry.source === 'jira' ? 'var(--pdStatusProgressText)' : 'var(--pdAccent06)',
+                      }} />
                       <EntryCard entry={entry} {...cardProps} />
                     </div>
                   ))}

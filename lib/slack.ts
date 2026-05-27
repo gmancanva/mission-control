@@ -23,6 +23,9 @@ const CACHE_PATH = path.join(DATA_DIR, 'slack-mentions-cache.json')
 export function getBotToken(): string {
   return getConfig('slack.botToken') ?? process.env.SLACK_BOT_TOKEN ?? ''
 }
+export function getUserToken(): string {
+  return getConfig('slack.userToken') ?? process.env.SLACK_USER_TOKEN ?? ''
+}
 export function getMyUserId(): string {
   return getConfig('slack.myUserId') ?? process.env.SLACK_MY_USER_ID ?? ''
 }

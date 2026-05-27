@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { JiraTicketDetail } from '@/lib/jira'
 import { CANVA_PRIORITIES, CANVA_DESIGN_STATUSES, CANVA_CATEGORIES_OF_WORK } from '@/lib/jira-constants'
 import { renderAdf, type AdfAttachment } from '@/lib/adf-renderer'
+import { X, Pencil, Link, ExternalLink, Paperclip } from 'lucide-react'
 
 type Props = {
   ticketKey: string | null
@@ -55,9 +56,7 @@ function EditBtn({ onClick }: { onClick: () => void }) {
         fontSize: 11, fontFamily: 'inherit',
       }}
     >
-      <svg viewBox="0 0 16 16" fill="none" style={{ width: 11, height: 11 }}>
-        <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round"/>
-      </svg>
+      <Pencil size={11} />
       Edit
     </button>
   )
@@ -408,9 +407,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
           onClick={() => setPreviewUrl(null)}
         >
           <button onClick={() => setPreviewUrl(null)} className="IconButton" style={{ position: 'absolute', top: 16, right: 16, color: 'rgba(255,255,255,0.7)' }}>
-            <svg viewBox="0 0 16 16" fill="none" style={{ width: 20, height: 20 }}>
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
+            <X size={20} />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={previewUrl} alt="Preview" style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: 12 }} onClick={(e) => e.stopPropagation()} />
@@ -427,9 +424,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
           {loading && <span style={{ fontSize: 13, color: 'var(--pdTextMuted)' }}>Loading…</span>}
           <div style={{ flex: 1 }} />
           <button className="IconButton" onClick={onClose} title="Close (Esc)">
-            <svg viewBox="0 0 16 16" fill="none" style={{ width: 16, height: 16 }}>
-              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-            </svg>
+            <X size={16} />
           </button>
         </div>
 
@@ -447,7 +442,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
             <>
               {/* Title + status pills */}
               <div>
-                <h2 style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.3, color: 'var(--pdTextStrong)', margin: '0 0 12px' }}>{detail.summary}</h2>
+                <h2 style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.25, letterSpacing: '-0.018em', color: 'var(--pdTextStrong)', margin: '0 0 12px' }}>{detail.summary}</h2>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                   <StatusBadge status={detail.status} categoryKey={detail.statusCategoryKey} />
                   <PriorityBadge priority={detail.priority} />
@@ -691,9 +686,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
                     {detail.issueLinks.map((link) => (
                       <a key={link.id} href={`${jiraBaseUrl}/browse/${link.key}`} target="_blank" rel="noopener noreferrer" className="Attachment" style={{ textDecoration: 'none' }}>
                         <div className="Attachment__thumb">
-                          <svg viewBox="0 0 16 16" fill="none" style={{ width: 16, height: 16 }}>
-                            <path d="M9 5h2.5a2.5 2.5 0 0 1 0 5H9M7 11H4.5a2.5 2.5 0 0 1 0-5H7M5.5 7.5h5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                          </svg>
+                          <Link size={14} />
                         </div>
                         <div className="Attachment__body">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -725,9 +718,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
                               // eslint-disable-next-line @next/next/no-img-element
                               <img src={att.thumbnail} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             ) : (
-                              <svg viewBox="0 0 16 16" fill="none" style={{ width: 16, height: 16 }}>
-                                <path d="M11 7.5L7 11.5a2.5 2.5 0 0 1-3.5-3.5l5-5a1.5 1.5 0 0 1 2 2L5.5 10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                              </svg>
+                              <Paperclip size={14} />
                             )}
                           </div>
                           <div className="Attachment__body">
@@ -852,9 +843,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
             <a href={`${jiraBaseUrl}/browse/${detail.key}`} target="_blank" rel="noopener noreferrer"
               style={{ fontSize: 13, fontWeight: 500, color: 'var(--pdAccent06)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               Open in Jira
-              <svg viewBox="0 0 12 12" fill="none" style={{ width: 12, height: 12 }}>
-                <path d="M7 2h3v3M10 2L5.5 6.5M4 3H2a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h5a1 1 0 0 0 1-1V7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <ExternalLink size={12} />
             </a>
           </div>
         )}

@@ -5,6 +5,8 @@ import { DATA_DIR } from '@/lib/data-dir'
 import path from 'path'
 import fs from 'fs'
 
+export const dynamic = 'force-dynamic'
+
 const SPRINT_CACHE_PATH = path.join(DATA_DIR, 'sprint-capacity-cache.json')
 
 export async function GET() {

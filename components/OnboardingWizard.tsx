@@ -341,8 +341,8 @@ function DoneScreen({ configured, onClose }: { configured: Set<string>; onClose:
               {done ? (
                 <span style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
-                  fontSize: 12, color: '#16a34a',
-                  background: '#dcfce7', borderRadius: 100,
+                  fontSize: 12, color: 'var(--pdStatusDoneFg)',
+                  background: 'var(--pdStatusDoneBg)', borderRadius: 100,
                   padding: '2px 8px',
                 }}>
                   <CheckIcon size={11} /> Connected
@@ -421,8 +421,8 @@ function GoogleCalendarSetup() {
             onClick={copy}
             style={{
               fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 6, border: 'none', cursor: 'pointer',
-              background: copied ? '#dcfce7' : 'var(--pdSurface3)',
-              color: copied ? '#15803d' : 'var(--pdTextMuted)',
+              background: copied ? 'var(--pdStatusDoneBg)' : 'var(--pdSurface3)',
+              color: copied ? 'var(--pdStatusDoneFg)' : 'var(--pdTextMuted)',
               transition: 'all 0.15s',
             }}
           >
@@ -444,8 +444,8 @@ function GoogleCalendarSetup() {
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
           padding: '11px 20px', borderRadius: 10,
-          background: '#dcfce7', border: '1px solid #bbf7d0',
-          fontSize: 13, fontWeight: 600, color: '#15803d',
+          background: 'var(--pdStatusDoneBg)', border: '1px solid var(--pdStatusDoneBorder)',
+          fontSize: 13, fontWeight: 600, color: 'var(--pdStatusDoneFg)',
         }}>
           <CheckIcon size={14} />
           No passwords or OAuth — Claude handles it all
@@ -487,8 +487,8 @@ function IntegrationStep({
             {isConfigured && (
               <span style={{
                 display: 'inline-flex', alignItems: 'center', gap: 4,
-                fontSize: 11, fontWeight: 600, color: '#16a34a',
-                background: '#dcfce7', border: '1px solid #bbf7d0',
+                fontSize: 11, fontWeight: 600, color: 'var(--pdStatusDoneFg)',
+                background: 'var(--pdStatusDoneBg)', border: '1px solid var(--pdStatusDoneBorder)',
                 borderRadius: 100, padding: '2px 8px',
               }}>
                 <CheckIcon size={10} /> Connected
@@ -515,7 +515,7 @@ function IntegrationStep({
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
               <div style={{
                 width: 20, height: 20, borderRadius: 6, flexShrink: 0, marginTop: 1,
-                background: '#dcfce7', color: '#16a34a',
+                background: 'var(--pdStatusDoneBg)', color: 'var(--pdStatusDoneFg)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 <CheckIcon size={11} />
@@ -672,7 +672,7 @@ export default function OnboardingWizard({ onClose, onGoToSettings, configured }
                         <div style={{
                           position: 'absolute', bottom: -3, right: -3,
                           width: 12, height: 12, borderRadius: '50%',
-                          background: '#16a34a', border: '1.5px solid var(--pdSurface1)',
+                          background: 'var(--pdStatusDoneDot)', border: '1.5px solid var(--pdSurface1)',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                           color: 'white',
                         }}>
@@ -690,7 +690,7 @@ export default function OnboardingWizard({ onClose, onGoToSettings, configured }
                         {s.name}
                       </div>
                       {isCfg && (
-                        <div style={{ fontSize: 10, color: '#16a34a' }}>Connected</div>
+                        <div style={{ fontSize: 10, color: 'var(--pdStatusDoneFg)' }}>Connected</div>
                       )}
                     </div>
                   </button>

@@ -5,6 +5,8 @@ import fs from 'fs'
 import { getBotToken } from '@/lib/slack'
 import { DATA_DIR } from '@/lib/data-dir'
 
+export const dynamic = 'force-dynamic'
+
 const DISK_CACHE_PATH = path.join(DATA_DIR, 'slack-users-cache.json')
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000 // 6 hours
 

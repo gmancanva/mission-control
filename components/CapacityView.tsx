@@ -193,7 +193,7 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
             </div>
             {hasMeetingData && (
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 28, fontWeight: 800, color: '#3B82F6', letterSpacing: '-0.02em' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--pdAccent06)', letterSpacing: '-0.02em' }}>
                   {meetingHours}h
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--pdTextMuted)' }}>in meetings</div>
@@ -214,7 +214,7 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
                 <div style={{
                   height: '100%',
                   width: `${meetingPct}%`,
-                  background: '#3B82F6',
+                  background: 'var(--pdAccent06)',
                   borderRadius: 'var(--pdRadiusPill)',
                   transition: 'width 600ms cubic-bezier(.4,0,.2,1)',
                 }} />
@@ -223,7 +223,7 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
               {/* Legend */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 12 }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--pdTextMuted)' }}>
-                  <span style={{ width: 10, height: 10, borderRadius: 2, background: '#3B82F6', flexShrink: 0 }} />
+                  <span style={{ width: 10, height: 10, borderRadius: 2, background: 'var(--pdAccent06)', flexShrink: 0 }} />
                   Meetings
                 </span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: 'var(--pdTextMuted)' }}>
@@ -234,7 +234,7 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
 
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
                 <span style={{ fontSize: 13, color: 'var(--pdTextMuted)' }}>
-                  <strong style={{ color: '#3B82F6' }}>{meetingHours}h</strong>
+                  <strong style={{ color: 'var(--pdAccent06)' }}>{meetingHours}h</strong>
                   {' '}meetings · {' '}
                   <strong style={{ color: 'var(--pdStatusDoneFg)' }}>{productiveHours}h</strong>
                   {' '}productive remaining
@@ -286,7 +286,7 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
                         <div style={{
                           height: '100%',
                           width: `${Math.min(100, (day.meetingHours / 8) * 100)}%`,
-                          background: '#3B82F6',
+                          background: 'var(--pdAccent06)',
                           borderRadius: 'var(--pdRadiusPill)',
                         }} />
                       </div>
@@ -371,7 +371,7 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
                             <div style={{
                               height: '100%',
                               width: `${pct}%`,
-                              background: pct > 80 ? '#EF4444' : pct > 50 ? '#F59E0B' : 'var(--pdAccent06)',
+                              background: pct > 80 ? 'var(--pdPrioHigh)' : pct > 50 ? 'var(--pdPrioMedium)' : 'var(--pdAccent06)',
                               borderRadius: 'var(--pdRadiusPill)',
                               transition: 'width 400ms ease',
                             }} />

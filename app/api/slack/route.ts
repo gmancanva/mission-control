@@ -6,6 +6,8 @@ import path from 'path'
 import fs from 'fs'
 import { DATA_DIR } from '@/lib/data-dir'
 
+export const dynamic = 'force-dynamic'
+
 const CACHE_PATH = path.join(DATA_DIR, 'slack-mentions-cache.json')
 const USERS_CACHE_PATH = path.join(DATA_DIR, 'slack-users-cache.json')
 

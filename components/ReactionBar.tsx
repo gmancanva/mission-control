@@ -17,7 +17,8 @@ export default function ReactionBar({ reactions }: { reactions: Reaction[] }) {
           <span
             key={r.name}
             title={`:${r.name}:`}
-            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
+            className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs"
+            style={{ background: 'var(--pdSurface2)', border: '1px solid var(--pdBorder)', color: 'var(--pdTextMuted)' }}
           >
             {isImg
               ? <span dangerouslySetInnerHTML={{ __html: resolved }} />

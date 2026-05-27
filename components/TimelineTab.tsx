@@ -44,7 +44,6 @@ function getMonthMarkers(windowStart: Date): { label: string; left: string }[] {
   return markers
 }
 
-// Collect unique sprints from all epics, sorted by date
 function collectSprints(epics: JiraEpic[]): JiraSprint[] {
   const map = new Map<number, JiraSprint>()
   for (const e of epics)
@@ -75,45 +74,53 @@ function SprintCard({ sprint, epics }: { sprint: JiraSprint; epics: JiraEpic[] }
   const isEmpty = inSprint.length === 0
 
   return (
-    <div className={`rounded-xl border overflow-hidden ${
-      isActive
-        ? 'border-blue-200 dark:border-blue-800'
-        : isFuture
-          ? 'border-dashed border-gray-200 dark:border-gray-700'
-          : 'border-gray-200 dark:border-gray-800'
-    }`}>
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{
+        border: `1px ${isFuture ? 'dashed' : 'solid'} ${isActive ? 'var(--pdAccent04)' : 'var(--pdBorder)'}`,
+      }}
+    >
       {/* Sprint header */}
-      <div className={`flex items-center gap-3 px-4 py-3 ${
-        isActive
-          ? 'bg-blue-50 dark:bg-blue-950/30'
-          : isFuture
-            ? 'bg-gray-50/60 dark:bg-gray-900/40'
-            : 'bg-gray-50 dark:bg-gray-900/60'
-      }`}>
-        <div className={`w-2 h-2 rounded-full shrink-0 ${
-          isActive ? 'bg-blue-500' : isFuture ? 'bg-gray-300 dark:bg-gray-600' : 'bg-gray-200 dark:bg-gray-700'
-        }`} />
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ background: isActive ? 'var(--pdAccent01)' : 'var(--pdSurface2)' }}
+      >
+        <div
+          className="w-2 h-2 rounded-full shrink-0"
+          style={{ background: isActive ? 'var(--pdAccent06)' : 'var(--pdBorderStrong)' }}
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={`text-sm font-semibold ${
-              isActive ? 'text-blue-700 dark:text-blue-300' : 'text-gray-700 dark:text-gray-200'
-            }`}>{sprint.name}</span>
+            <span
+              className="text-sm font-semibold"
+              style={{ color: isActive ? 'var(--pdAccent07)' : 'var(--pdTextBase)' }}
+            >
+              {sprint.name}
+            </span>
             {isActive && (
-              <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+              <span
+                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: 'var(--pdAccent02)', color: 'var(--pdAccent07)' }}
+              >
                 Active
               </span>
             )}
             {isFuture && (
-              <span className="text-xs font-medium text-gray-400 dark:text-gray-500 px-2 py-0.5 rounded-full border border-gray-200 dark:border-gray-700">
+              <span
+                className="text-xs font-medium px-2 py-0.5 rounded-full"
+                style={{ border: '1px solid var(--pdBorder)', color: 'var(--pdTextSubtle)' }}
+              >
                 Upcoming
               </span>
             )}
           </div>
           {sprint.goal && (
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 leading-relaxed">{sprint.goal}</p>
+            <p className="text-xs mt-0.5 leading-relaxed" style={{ color: 'var(--pdTextMuted)' }}>
+              {sprint.goal}
+            </p>
           )}
         </div>
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 tabular-nums">
+        <span className="text-xs shrink-0 tabular-nums" style={{ color: 'var(--pdTextSubtle)' }}>
           {fmt(sprint.startDate)} – {fmt(sprint.endDate)}
         </span>
       </div>
@@ -121,16 +128,22 @@ function SprintCard({ sprint, epics }: { sprint: JiraSprint; epics: JiraEpic[] }
       {/* Epic list */}
       {isEmpty ? (
         <div className="px-4 py-3">
-          <p className="text-xs text-gray-400 dark:text-gray-600 italic">No epics linked to this sprint.</p>
+          <p className="text-xs italic" style={{ color: 'var(--pdTextSubtle)' }}>
+            No epics linked to this sprint.
+          </p>
         </div>
       ) : (
-        <div className="divide-y divide-gray-100 dark:divide-gray-800/60">
+        <div>
           {Object.entries(byProject).map(([proj, epicList]) => (
-            <div key={proj}>
+            <div key={proj} style={{ borderTop: '1px solid var(--pdBorder)' }}>
               {/* Project label */}
               <div className="flex items-center gap-2 px-4 pt-2.5 pb-1">
-                <span className="text-[10px] font-bold tracking-widest uppercase text-gray-400 dark:text-gray-500">{proj}</span>
-                <span className="text-[10px] text-gray-300 dark:text-gray-700">{epicList.length} epic{epicList.length !== 1 ? 's' : ''}</span>
+                <span className="text-[10px] font-bold tracking-widest uppercase" style={{ color: 'var(--pdTextSubtle)' }}>
+                  {proj}
+                </span>
+                <span className="text-[10px]" style={{ color: 'var(--pdBorderStrong)' }}>
+                  {epicList.length} epic{epicList.length !== 1 ? 's' : ''}
+                </span>
               </div>
               {epicList.map((e, idx) => {
                 const statusKey = getEpicStatusKey(e.status)
@@ -138,12 +151,17 @@ function SprintCard({ sprint, epics }: { sprint: JiraSprint; epics: JiraEpic[] }
                 return (
                   <div
                     key={e.id}
-                    className={`flex items-center gap-3 px-4 py-2.5 ${idx < epicList.length - 1 ? 'border-b border-gray-50 dark:border-gray-800/40' : ''}`}
+                    className="flex items-center gap-3 px-4 py-2.5"
+                    style={{ borderTop: idx > 0 ? '1px solid var(--pdBorder)' : undefined }}
                   >
-                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500 shrink-0 w-24">{e.key}</span>
-                    <span className="flex-1 text-sm text-gray-700 dark:text-gray-200 truncate">{e.summary}</span>
+                    <span className="text-xs font-mono shrink-0 w-24" style={{ color: 'var(--pdTextSubtle)' }}>
+                      {e.key}
+                    </span>
+                    <span className="flex-1 text-sm truncate" style={{ color: 'var(--pdTextBase)' }}>
+                      {e.summary}
+                    </span>
                     {end && (
-                      <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0 tabular-nums">
+                      <span className="text-xs shrink-0 tabular-nums" style={{ color: 'var(--pdTextSubtle)' }}>
                         {fmt(end)}
                       </span>
                     )}
@@ -166,10 +184,8 @@ function GanttChart({ epics, sprints }: { epics: JiraEpic[]; sprints: JiraSprint
   const monthMarkers = getMonthMarkers(windowStart)
   const todayLeft = toPercent(VISIBLE_DAYS)
 
-  // Only epics with at least a due date
   const datedEpics = epics.filter(e => e.dueDate || e.handoverDate)
 
-  // Group by project
   const byProject = datedEpics.reduce<Record<string, JiraEpic[]>>((acc, e) => {
     ;(acc[e.project] = acc[e.project] ?? []).push(e)
     return acc
@@ -177,7 +193,7 @@ function GanttChart({ epics, sprints }: { epics: JiraEpic[]; sprints: JiraSprint
 
   if (datedEpics.length === 0) {
     return (
-      <p className="text-sm text-gray-400 dark:text-gray-600 text-center py-8">
+      <p className="text-sm text-center py-8" style={{ color: 'var(--pdTextSubtle)' }}>
         No epics have dates set in Jira. Add start/due dates to epics to see them here.
       </p>
     )
@@ -189,56 +205,75 @@ function GanttChart({ epics, sprints }: { epics: JiraEpic[]; sprints: JiraSprint
     return { ...s, left: toPercent(start), width: toPercent(end - start) }
   })
 
-  const epicColor = (e: JiraEpic): string => {
+  // Returns an inline style background color
+  const epicBarColor = (e: JiraEpic): string => {
     const isShipped = ['done', 'ship', 'released', 'closed', 'cancelled'].some(x => e.status.toLowerCase().includes(x))
     const end = e.dueDate ?? e.handoverDate
-    if (isShipped) return 'bg-green-500 dark:bg-green-600'
-    if (!end) return 'bg-gray-300 dark:bg-gray-600'
+    if (isShipped) return 'var(--pdStatusDoneText)'
+    if (!end) return 'var(--pdBorderStrong)'
     const daysLeft = dayOffset(new Date(end), new Date())
-    if (daysLeft < 0) return 'bg-red-500 dark:bg-red-600'
-    if (daysLeft <= 14) return 'bg-amber-400 dark:bg-amber-500'
-    return 'bg-blue-500 dark:bg-blue-600'
+    if (daysLeft < 0) return 'var(--pdPrioHigh)'
+    if (daysLeft <= 14) return 'var(--pdPrioMedium)'
+    return 'var(--pdAccent06)'
   }
 
+  const activeBandBg = 'color-mix(in srgb, var(--pdAccent06) 6%, transparent)'
+
   return (
-    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+    <div
+      className="rounded-xl overflow-hidden"
+      style={{ background: 'var(--pdSurface1)', border: '1px solid var(--pdBorder)' }}
+    >
       {/* Month header */}
-      <div className="relative h-8 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 select-none">
-        {/* Sprint bands in header */}
+      <div
+        className="relative h-8 select-none"
+        style={{ background: 'var(--pdSurface2)', borderBottom: '1px solid var(--pdBorder)' }}
+      >
         {sprintBands.map(s => (
           <div
             key={s.id}
-            className={`absolute top-0 h-full ${s.state === 'active' ? 'bg-blue-100/60 dark:bg-blue-900/20' : 'bg-gray-100/40 dark:bg-gray-800/20'}`}
-            style={{ left: s.left, width: s.width }}
+            className="absolute top-0 h-full"
+            style={{ left: s.left, width: s.width, background: s.state === 'active' ? activeBandBg : 'transparent' }}
           />
         ))}
         {monthMarkers.map(m => (
           <div key={m.label} className="absolute top-0 h-full flex items-center" style={{ left: m.left }}>
-            <div className="absolute top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-800" />
-            <span className="text-xs text-gray-400 dark:text-gray-500 pl-1.5 whitespace-nowrap relative z-10">{m.label}</span>
+            <div className="absolute top-0 bottom-0 w-px" style={{ background: 'var(--pdBorder)' }} />
+            <span className="text-xs pl-1.5 whitespace-nowrap relative z-10" style={{ color: 'var(--pdTextSubtle)' }}>
+              {m.label}
+            </span>
           </div>
         ))}
-        <div className="absolute top-0 h-full w-0.5 bg-blue-400/50" style={{ left: todayLeft }} />
+        <div className="absolute top-0 h-full w-0.5" style={{ left: todayLeft, background: 'var(--pdAccentA03)' }} />
       </div>
 
       {/* Project groups */}
       {Object.entries(byProject).map(([proj, projEpics]) => (
         <div key={proj}>
           {/* Project header */}
-          <div className="relative flex items-center h-8 bg-gray-50 dark:bg-gray-900/80 border-b border-gray-100 dark:border-gray-800/60">
+          <div
+            className="relative flex items-center h-8"
+            style={{ background: 'var(--pdSurface2)', borderBottom: '1px solid var(--pdBorder)' }}
+          >
             <div className="w-52 shrink-0 px-4">
-              <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">{proj}</span>
+              <span className="text-xs font-semibold uppercase tracking-wider" style={{ color: 'var(--pdTextMuted)' }}>
+                {proj}
+              </span>
             </div>
             <div className="flex-1 relative h-full">
               {sprintBands.map(s => (
-                <div key={s.id} className={`absolute top-0 h-full ${s.state === 'active' ? 'bg-blue-50/80 dark:bg-blue-900/10' : ''}`} style={{ left: s.left, width: s.width }} />
+                <div
+                  key={s.id}
+                  className="absolute top-0 h-full"
+                  style={{ left: s.left, width: s.width, background: s.state === 'active' ? activeBandBg : 'transparent' }}
+                />
               ))}
             </div>
           </div>
 
           {/* Epic rows */}
-          <div className="divide-y divide-gray-100 dark:divide-gray-800/50">
-            {projEpics.map(epic => {
+          <div>
+            {projEpics.map((epic, i) => {
               const end = epic.dueDate ?? epic.handoverDate
               const startD = epic.startDate ? new Date(epic.startDate) : (end ? new Date(new Date(end).getTime() - 14 * 86400000) : null)
               const endD = end ? new Date(end) : null
@@ -246,29 +281,46 @@ function GanttChart({ epics, sprints }: { epics: JiraEpic[]; sprints: JiraSprint
               const barWidth = (startD && endD) ? toPercent(Math.max(1, dayOffset(endD, windowStart) - dayOffset(startD, windowStart))) : '2%'
 
               return (
-                <div key={epic.id} className="relative flex items-center h-11 hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors group">
-                  <div className="absolute top-0 bottom-0 w-px bg-blue-400/20 z-10 pointer-events-none" style={{ left: todayLeft }} />
+                <div
+                  key={epic.id}
+                  className="relative flex items-center h-11 transition-colors group"
+                  style={{ borderTop: i > 0 ? '1px solid var(--pdBorder)' : undefined }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--pdSurface2)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '')}
+                >
+                  <div className="absolute top-0 bottom-0 w-px z-10 pointer-events-none" style={{ left: todayLeft, background: 'var(--pdAccentA02)' }} />
                   {sprintBands.map(s => (
-                    <div key={s.id} className={`absolute top-0 h-full pointer-events-none ${s.state === 'active' ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`} style={{ left: s.left, width: s.width }} />
+                    <div
+                      key={s.id}
+                      className="absolute top-0 h-full pointer-events-none"
+                      style={{ left: s.left, width: s.width, background: s.state === 'active' ? activeBandBg : 'transparent' }}
+                    />
                   ))}
                   {monthMarkers.map(m => (
-                    <div key={m.label} className="absolute top-0 bottom-0 w-px bg-gray-100 dark:bg-gray-800/40 pointer-events-none" style={{ left: m.left }} />
+                    <div
+                      key={m.label}
+                      className="absolute top-0 bottom-0 w-px pointer-events-none"
+                      style={{ left: m.left, background: 'var(--pdBorder)' }}
+                    />
                   ))}
 
                   {/* Epic label */}
-                  <div className="w-52 shrink-0 px-4 z-20 bg-white dark:bg-gray-900 group-hover:bg-gray-50 dark:group-hover:bg-gray-800/30 transition-colors">
-                    <span className="text-xs font-mono text-gray-400 dark:text-gray-500">{epic.key}</span>
-                    <p className="text-xs text-gray-700 dark:text-gray-300 truncate">{epic.summary}</p>
+                  <div
+                    className="w-52 shrink-0 px-4 z-20 transition-colors"
+                    style={{ background: 'var(--pdSurface1)' }}
+                  >
+                    <span className="text-xs font-mono" style={{ color: 'var(--pdTextSubtle)' }}>{epic.key}</span>
+                    <p className="text-xs truncate" style={{ color: 'var(--pdTextBase)' }}>{epic.summary}</p>
                   </div>
 
                   {/* Bar */}
                   <div className="flex-1 relative h-full overflow-hidden">
                     <div
-                      className={`absolute top-2.5 h-6 rounded-md ${epicColor(epic)} opacity-85 flex items-center px-2 min-w-[4px]`}
-                      style={{ left: barLeft, width: barWidth }}
+                      className="absolute top-2.5 h-6 rounded-md opacity-90 flex items-center px-2 min-w-[4px]"
+                      style={{ left: barLeft, width: barWidth, background: epicBarColor(epic) }}
                       title={`${epic.startDate ? fmt(epic.startDate) + ' → ' : ''}${fmt(end)}`}
                     >
-                      <span className="text-xs text-white font-medium truncate whitespace-nowrap">
+                      <span className="text-xs font-medium truncate whitespace-nowrap" style={{ color: '#fff' }}>
                         {epic.startDate ? `${fmt(epic.startDate)} → ` : ''}{fmt(end)}
                       </span>
                     </div>
@@ -276,7 +328,7 @@ function GanttChart({ epics, sprints }: { epics: JiraEpic[]; sprints: JiraSprint
 
                   {/* Status */}
                   <div className="w-24 shrink-0 pr-4 z-20 text-right">
-                    <span className="text-xs text-gray-400 dark:text-gray-600 truncate">{epic.status}</span>
+                    <span className="text-xs truncate" style={{ color: 'var(--pdTextSubtle)' }}>{epic.status}</span>
                   </div>
                 </div>
               )
@@ -286,14 +338,32 @@ function GanttChart({ epics, sprints }: { epics: JiraEpic[]; sprints: JiraSprint
       ))}
 
       {/* Legend row */}
-      <div className="flex items-center gap-4 px-4 py-2 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 flex-wrap">
-        {(['blue-500', 'amber-400', 'red-500', 'green-500'] as const).map((_, i) => null)}
-        <div className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-3 h-2 rounded-sm bg-blue-500 inline-block"/>On track</div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-3 h-2 rounded-sm bg-amber-400 inline-block"/>Due &lt; 2 weeks</div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-3 h-2 rounded-sm bg-red-500 inline-block"/>Overdue</div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-400"><span className="w-3 h-2 rounded-sm bg-green-500 inline-block"/>Shipped</div>
-        <div className="flex items-center gap-1.5 text-xs text-gray-400 ml-auto">
-          <span className="w-8 h-3 rounded-sm bg-blue-100 dark:bg-blue-900/30 inline-block border border-blue-200 dark:border-blue-800"/>Active sprint
+      <div
+        className="flex items-center gap-4 px-4 py-2 flex-wrap"
+        style={{ borderTop: '1px solid var(--pdBorder)', background: 'var(--pdSurface2)' }}
+      >
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--pdTextSubtle)' }}>
+          <span className="w-3 h-2 rounded-sm inline-block" style={{ background: 'var(--pdAccent06)' }} />
+          On track
+        </div>
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--pdTextSubtle)' }}>
+          <span className="w-3 h-2 rounded-sm inline-block" style={{ background: 'var(--pdPrioMedium)' }} />
+          Due &lt; 2 weeks
+        </div>
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--pdTextSubtle)' }}>
+          <span className="w-3 h-2 rounded-sm inline-block" style={{ background: 'var(--pdPrioHigh)' }} />
+          Overdue
+        </div>
+        <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--pdTextSubtle)' }}>
+          <span className="w-3 h-2 rounded-sm inline-block" style={{ background: 'var(--pdStatusDoneText)' }} />
+          Shipped
+        </div>
+        <div className="flex items-center gap-1.5 text-xs ml-auto" style={{ color: 'var(--pdTextSubtle)' }}>
+          <span
+            className="w-8 h-3 rounded-sm inline-block"
+            style={{ background: activeBandBg, border: '1px solid var(--pdAccent03)' }}
+          />
+          Active sprint
         </div>
       </div>
     </div>
@@ -307,14 +377,13 @@ export default function TimelineTab({ epics }: Props) {
 
   if (epics.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-gray-500 dark:text-gray-500">
+      <div className="flex flex-col items-center justify-center py-24" style={{ color: 'var(--pdTextMuted)' }}>
         <p className="text-sm">No epics to display. Sync your Jira data first.</p>
       </div>
     )
   }
 
   const allSprints = collectSprints(epics)
-  // Show active first, then most recent 6 closed, then future
   const activeSprints = allSprints.filter(s => s.state === 'active')
   const futureSprints = allSprints.filter(s => s.state === 'future')
   const recentClosed = allSprints.filter(s => s.state === 'closed').slice(-5).reverse()
@@ -327,22 +396,37 @@ export default function TimelineTab({ epics }: Props) {
 
       {/* Tab toggle */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 text-xs">
+        <div
+          className="flex items-center rounded-lg p-0.5 text-xs"
+          style={{ background: 'var(--pdSurface3)', border: '1px solid var(--pdBorder)' }}
+        >
           <button
             onClick={() => setTab('roadmap')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${tab === 'roadmap' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+            className="px-3 py-1.5 rounded-md transition-colors"
+            style={tab === 'roadmap' ? {
+              background: 'var(--pdSurface1)',
+              color: 'var(--pdTextStrong)',
+              boxShadow: 'var(--pdShadowSm)',
+            } : { color: 'var(--pdTextMuted)' }}
           >
             Roadmap
           </button>
           <button
             onClick={() => setTab('sprints')}
-            className={`px-3 py-1.5 rounded-md transition-colors ${tab === 'sprints' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700'}`}
+            className="px-3 py-1.5 rounded-md transition-colors"
+            style={tab === 'sprints' ? {
+              background: 'var(--pdSurface1)',
+              color: 'var(--pdTextStrong)',
+              boxShadow: 'var(--pdShadowSm)',
+            } : { color: 'var(--pdTextMuted)' }}
           >
             Sprints
           </button>
         </div>
-        <span className="text-xs text-gray-400 dark:text-gray-600">
-          {tab === 'sprints' ? `${displayedSprints.length} sprints · ${epics.length} epics` : `${epics.filter(e => e.dueDate || e.handoverDate).length} dated epics`}
+        <span className="text-xs" style={{ color: 'var(--pdTextSubtle)' }}>
+          {tab === 'sprints'
+            ? `${displayedSprints.length} sprints · ${epics.length} epics`
+            : `${epics.filter(e => e.dueDate || e.handoverDate).length} dated epics`}
         </span>
       </div>
 
@@ -350,14 +434,19 @@ export default function TimelineTab({ epics }: Props) {
       {tab === 'sprints' && (
         <div className="space-y-3">
           {displayedSprints.length === 0 && (
-            <p className="text-sm text-gray-400 dark:text-gray-600 text-center py-8">No sprint data found. Sync to refresh.</p>
+            <p className="text-sm text-center py-8" style={{ color: 'var(--pdTextSubtle)' }}>
+              No sprint data found. Sync to refresh.
+            </p>
           )}
           {displayedSprints.map(sprint => (
             <SprintCard key={sprint.id} sprint={sprint} epics={epics} />
           ))}
           {undatedEpics.length > 0 && (
             <details className="group">
-              <summary className="text-xs text-gray-400 dark:text-gray-600 cursor-pointer hover:text-gray-600 dark:hover:text-gray-400 select-none list-none flex items-center gap-1.5 py-1">
+              <summary
+                className="cursor-pointer select-none list-none flex items-center gap-1.5 py-1 text-xs"
+                style={{ color: 'var(--pdTextSubtle)' }}
+              >
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="none" className="transition-transform group-open:rotate-90">
                   <path d="M3 2l4 3-4 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -365,10 +454,10 @@ export default function TimelineTab({ epics }: Props) {
               </summary>
               <div className="mt-2 space-y-1 pl-4">
                 {undatedEpics.map(e => (
-                  <div key={e.id} className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-500">
-                    <span className="font-mono text-gray-400 dark:text-gray-600">{e.key}</span>
+                  <div key={e.id} className="flex items-center gap-2 text-xs" style={{ color: 'var(--pdTextMuted)' }}>
+                    <span className="font-mono" style={{ color: 'var(--pdTextSubtle)' }}>{e.key}</span>
                     <span className="truncate">{e.summary}</span>
-                    <span className="shrink-0 text-gray-400 dark:text-gray-600">{e.status}</span>
+                    <span className="shrink-0" style={{ color: 'var(--pdTextSubtle)' }}>{e.status}</span>
                   </div>
                 ))}
               </div>

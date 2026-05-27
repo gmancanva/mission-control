@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { JiraTicket, JiraEpic } from '@/lib/jira'
 import KanbanBoard from './KanbanBoard'
 import TicketDetailPanel from './TicketDetailPanel'
+import { Check, Loader2, Calendar } from 'lucide-react'
 
 type Props = {
   tickets: JiraTicket[]
@@ -27,6 +28,14 @@ function getStatusKey(status: string): 'todo' | 'progress' | 'review' | 'done' {
   return 'todo'
 }
 
+function getPriorityKey(priority: string): 'blocker' | 'high' | 'medium' | 'low' {
+  const p = priority.toLowerCase()
+  if (p === 'blocker' || p === 'critical' || p === 'must have') return 'blocker'
+  if (p === 'high' || p === 'should have') return 'high'
+  if (p === 'medium' || p === 'nice to have') return 'medium'
+  return 'low'
+}
+
 function KanbanIcon() {
   return (
     <svg viewBox="0 0 16 16" fill="none" style={{ width: 14, height: 14 }}>
@@ -48,21 +57,21 @@ function ListIcon() {
   )
 }
 
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" style={{ width: 14, height: 14 }}>
-      <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
 
 export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTicketUpdated, onOpenCreate }: Props) {
   const [view, setView] = useState<'board' | 'list'>('board')
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [completing, setCompleting] = useState<Record<string, boolean>>({})
   const [completed, setCompleted] = useState<Set<string>>(new Set())
+  const [markDoneError, setMarkDoneError] = useState<string | null>(null)
   const [filterProject, setFilterProject] = useState<string>('all')
+
+  // Auto-dismiss mark-done error after 6 seconds
+  useEffect(() => {
+    if (!markDoneError) return
+    const t = setTimeout(() => setMarkDoneError(null), 6000)
+    return () => clearTimeout(t)
+  }, [markDoneError])
 
   const projects = ['all', ...Array.from(new Set(tickets.map((t) => t.project))).sort()]
 
@@ -74,16 +83,24 @@ export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTi
 
   async function handleMarkDone(ticket: JiraTicket) {
     setCompleting((prev) => ({ ...prev, [ticket.key]: true }))
+    setMarkDoneError(null)
     try {
-      await fetch('/api/jira', {
+      const res = await fetch('/api/jira', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'transition', issueKey: ticket.key, transition: 'Done' }),
       })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? `Jira returned ${res.status}`)
+      }
+      // Only hide the ticket once Jira confirms the transition succeeded
       setCompleted((prev) => new Set(Array.from(prev).concat(ticket.key)))
       onTicketUpdated?.()
     } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to mark done'
       console.error('Failed to transition ticket', err)
+      setMarkDoneError(`${ticket.key}: ${msg}`)
     } finally {
       setCompleting((prev) => ({ ...prev, [ticket.key]: false }))
     }
@@ -91,6 +108,22 @@ export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTi
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', minHeight: 0 }}>
+
+      {/* ── Mark-done error banner ── */}
+      {markDoneError && (
+        <div style={{
+          margin: '0 0 8px', padding: '8px 12px',
+          background: 'var(--pdStatusReviewBg)', border: '1px solid var(--pdStatusReviewBorder)',
+          borderRadius: 6, fontSize: 12, color: 'var(--pdStatusReviewFg)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+        }}>
+          <span>⚠ Could not mark done — {markDoneError}</span>
+          <button
+            onClick={() => setMarkDoneError(null)}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'inherit', padding: 0, lineHeight: 1 }}
+          >✕</button>
+        </div>
+      )}
 
       {/* ── Filter bar ── */}
       <div className="FilterBar">
@@ -152,7 +185,6 @@ export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTi
             <ListIcon />
           </button>
         </div>
-
       </div>
 
       {/* ── Main area: board/list + drawer side-by-side ── */}
@@ -172,18 +204,14 @@ export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTi
           )}
 
           {view === 'list' && (
-            <div style={{ flex: 1, overflow: 'auto', padding: '0 20px 20px' }}>
+            <div style={{ flex: 1, overflow: 'auto', padding: '16px 20px 20px' }}>
               {visibleTickets.length === 0 ? (
                 <div className="EmptyState">
                   <div className="EmptyState__icon">
                     <svg viewBox="0 0 32 32" fill="none" style={{ width: 30, height: 30 }}>
-                      {/* clipboard body */}
                       <rect x="6" y="5" width="20" height="23" rx="2.5" stroke="currentColor" strokeWidth="1.5"/>
-                      {/* clip at top */}
                       <path d="M12 5V3.5A1 1 0 0 1 13 2.5h6a1 1 0 0 1 1 1V5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round"/>
-                      {/* three completed lines */}
                       <path d="M10.5 13h4M10.5 17.5h3.5M10.5 22h2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" opacity="0.45"/>
-                      {/* big check circle in corner */}
                       <circle cx="22" cy="23" r="5" fill="currentColor" opacity="0.12"/>
                       <path d="M19.5 23l1.8 1.8 3.2-3.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
@@ -192,83 +220,96 @@ export default function MyTasks({ tickets, epics, projectKeys, jiraBaseUrl, onTi
                   <p className="EmptyState__desc">No open tasks assigned to you right now.</p>
                 </div>
               ) : (
-                <table className="PdTable" style={{ marginTop: 8 }}>
-                  <thead>
-                    <tr>
-                      <th style={{ width: 32 }}></th>
-                      <th style={{ width: 110 }}>Key</th>
-                      <th>Summary</th>
-                      <th style={{ width: 130 }}>Status</th>
-                      <th style={{ width: 100 }}>Priority</th>
-                      <th style={{ width: 110 }}>Due</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visibleTickets.map((ticket) => {
-                      const overdue = isOverdue(ticket.dueDate)
-                      const statusKey = getStatusKey(ticket.status)
-                      return (
-                        <tr
-                          key={ticket.key}
-                          onClick={() => setSelectedKey(ticket.key)}
-                          className={selectedKey === ticket.key ? 'is-selected' : ''}
-                        >
-                          <td>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleMarkDone(ticket) }}
-                              disabled={completing[ticket.key]}
-                              style={{
-                                width: 18,
-                                height: 18,
-                                borderRadius: 4,
-                                border: '1.5px solid var(--pdBorderStrong)',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                              title="Mark done"
-                            />
-                          </td>
-                          <td>
-                            <a
-                              className="JiraKey JiraKey--clickable"
-                              href={`${jiraBaseUrl}/browse/${ticket.key}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {ticket.key}
-                            </a>
-                          </td>
-                          <td className="PdTable__title">{ticket.summary}</td>
-                          <td><span className={`StatusPill StatusPill--${statusKey}`}>{ticket.status}</span></td>
-                          <td>
-                            <span style={{
-                              fontSize: 12,
-                              fontWeight: 600,
-                              color: ticket.priority.toLowerCase() === 'blocker' ? 'var(--pdPrioBlocker)'
-                                : ticket.priority.toLowerCase() === 'high' ? 'var(--pdPrioHigh)'
-                                : ticket.priority.toLowerCase() === 'medium' ? 'var(--pdPrioMedium)'
-                                : 'var(--pdPrioLow)',
-                            }}>
-                              {ticket.priority}
-                            </span>
-                          </td>
-                          <td>
-                            {ticket.dueDate && (
-                              <span style={{ fontSize: 12, color: overdue ? 'var(--pdPrioHigh)' : 'var(--pdTextMuted)' }}>
-                                {overdue && '⚠ '}
-                                {new Date(ticket.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                <div style={{
+                  border: '1px solid var(--pdBorder)',
+                  borderRadius: 12,
+                  overflow: 'hidden',
+                  background: 'var(--pdSurface1)',
+                }}>
+                  <table className="PdTable" style={{ marginTop: 0 }}>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 44 }}></th>
+                        <th style={{ width: 120 }}>Key</th>
+                        <th>Summary</th>
+                        <th style={{ width: 130 }}>Status</th>
+                        <th style={{ width: 130 }}>Priority</th>
+                        <th style={{ width: 100 }}>Due</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleTickets.map((ticket) => {
+                        const overdue = isOverdue(ticket.dueDate)
+                        const statusKey = getStatusKey(ticket.status)
+                        const priorityKey = getPriorityKey(ticket.priority)
+                        return (
+                          <tr
+                            key={ticket.key}
+                            onClick={() => setSelectedKey(ticket.key)}
+                            className={selectedKey === ticket.key ? 'is-selected' : ''}
+                          >
+                            {/* Checkbox */}
+                            <td style={{ textAlign: 'center' }}>
+                              <button
+                                className="TaskCheck"
+                                onClick={(e) => { e.stopPropagation(); handleMarkDone(ticket) }}
+                                disabled={completing[ticket.key]}
+                                title="Mark done"
+                              >
+                                {completing[ticket.key] ? <Loader2 size={10} style={{ animation: 'spin 0.8s linear infinite' }} /> : <Check size={10} />}
+                              </button>
+                            </td>
+
+                            {/* Key */}
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              <a
+                                className="JiraKey JiraKey--clickable"
+                                href={`${jiraBaseUrl}/browse/${ticket.key}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {ticket.key}
+                              </a>
+                            </td>
+
+                            {/* Summary */}
+                            <td className="PdTable__title">{ticket.summary}</td>
+
+                            {/* Status */}
+                            <td>
+                              <span className={`StatusPill StatusPill--${statusKey}`}>{ticket.status}</span>
+                            </td>
+
+                            {/* Priority */}
+                            <td>
+                              <span className={`PriorityBadge PriorityBadge--${priorityKey}`}>
+                                {ticket.priority}
                               </span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+                            </td>
+
+                            {/* Due */}
+                            <td>
+                              {ticket.dueDate && (
+                                <span style={{
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: 4,
+                                  fontSize: 12,
+                                  fontWeight: overdue ? 600 : 400,
+                                  color: overdue ? 'var(--pdPrioHigh)' : 'var(--pdTextMuted)',
+                                }}>
+                                  <Calendar size={10} />
+                                  {new Date(ticket.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

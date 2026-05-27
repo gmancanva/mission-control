@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { WebClient } from '@slack/web-api'
 import path from 'path'
 import fs from 'fs'
-import { getBotToken, getMyUserId } from '@/lib/slack'
+import { getBotToken, getUserToken, getMyUserId } from '@/lib/slack'
 import { DATA_DIR } from '@/lib/data-dir'
 
 const CACHE_PATH = path.join(DATA_DIR, 'slack-threads-cache.json')
@@ -28,8 +28,7 @@ type ThreadCache = {
   threads: Record<string, ThreadMessage[]>
 }
 
-async function fetchThreadLive(channel: string, ts: string): Promise<ThreadMessage[] | null> {
-  const token = getBotToken()
+async function fetchThreadLive(channel: string, ts: string, token: string): Promise<ThreadMessage[] | null> {
   if (!token) return null
 
   const myUserId = getMyUserId().trim() || undefined
@@ -115,10 +114,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Missing channel or ts param' }, { status: 400 })
     }
 
-    // Live fetch when bot token is configured
-    if (getBotToken()) {
+    // Live fetch — prefer user token (reads private channels + DMs), fall back to bot token
+    const activeToken = getUserToken() || getBotToken()
+    if (activeToken) {
       try {
-        const thread = await fetchThreadLive(channel, ts)
+        const thread = await fetchThreadLive(channel, ts, activeToken)
         if (thread && thread.length > 0) {
           return NextResponse.json({ thread, live: true })
         }

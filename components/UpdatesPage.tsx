@@ -854,48 +854,55 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
       {/* ── Tabbed: Needs attention + Open questions ── */}
       <section>
         {/* Tab bar */}
-        <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-800 mb-5">
-          <button
-            onClick={() => setActiveTab('attention')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === 'attention'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM8 5v4M8 10.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            Needs attention
-            {needsAttention.length > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                activeTab === 'attention'
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                  : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-              }`}>{needsAttention.length}</span>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('questions')}
-            className={`flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-              activeTab === 'questions'
-                ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
-                : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
-            }`}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
-              <path d="M6.5 6a1.5 1.5 0 0 1 3 0c0 1-1.5 1.5-1.5 2.5M8 10.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-              <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4"/>
-            </svg>
-            Open questions
-            {openQuestions.length > 0 && (
-              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${
-                activeTab === 'questions'
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300'
-                  : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-              }`}>{openQuestions.length}</span>
-            )}
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, borderBottom: '1px solid var(--pdBorder)', marginBottom: 20 }}>
+          {(['attention', 'questions'] as const).map(tab => {
+            const isActive = activeTab === tab
+            const count = tab === 'attention' ? needsAttention.length : openQuestions.length
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '10px 12px',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: `2px solid ${isActive ? 'var(--pdAccent06)' : 'transparent'}`,
+                  marginBottom: -1,
+                  cursor: 'pointer',
+                  color: isActive ? 'var(--pdAccent06)' : 'var(--pdTextSubtle)',
+                  transition: 'color 150ms, border-color 150ms',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {tab === 'attention' ? (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM8 5v4M8 10.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                    <path d="M6.5 6a1.5 1.5 0 0 1 3 0c0 1-1.5 1.5-1.5 2.5M8 10.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                    <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.4"/>
+                  </svg>
+                )}
+                {tab === 'attention' ? 'Needs attention' : 'Open questions'}
+                {count > 0 && (
+                  <span style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '1px 6px',
+                    borderRadius: 99,
+                    background: isActive ? 'var(--pdAccent02)' : 'var(--pdSurface2)',
+                    color: isActive ? 'var(--pdAccent07)' : 'var(--pdTextSubtle)',
+                  }}>{count}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* Needs attention tab */}

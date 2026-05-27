@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import type { JiraTicket } from '@/lib/jira'
+import { Calendar, Plus } from 'lucide-react'
 
 type Props = {
   tickets: JiraTicket[]
@@ -122,32 +123,6 @@ function isOverdue(dueDate: string | null): boolean {
   return new Date(dueDate) < new Date()
 }
 
-function CalendarIcon() {
-  return (
-    <svg viewBox="0 0 12 12" fill="none" style={{ width: 12, height: 12, flexShrink: 0 }}>
-      <rect x="1" y="1.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-      <path d="M1 4.5h10M4 0.5v2M8 0.5v2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function PlusIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="none" style={{ width: 16, height: 16 }}>
-      <path d="M8 3.5v9M3.5 8h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function MoreIcon() {
-  return (
-    <svg viewBox="0 0 16 16" fill="currentColor" style={{ width: 16, height: 16 }}>
-      <circle cx="3.5" cy="8" r="1.3"/>
-      <circle cx="8" cy="8" r="1.3"/>
-      <circle cx="12.5" cy="8" r="1.3"/>
-    </svg>
-  )
-}
 
 type TicketCardProps = {
   ticket: JiraTicket
@@ -206,7 +181,7 @@ function TicketCard({ ticket, jiraBaseUrl, isMoving, isSelected, isDragging, err
         <div className="TicketCard__meta">
           {ticket.dueDate && (
             <span style={{ color: overdue ? 'var(--pdPrioHigh)' : undefined }}>
-              <CalendarIcon />
+              <Calendar size={11} />
               {new Date(ticket.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}
             </span>
           )}
@@ -335,22 +310,24 @@ export default function KanbanBoard({ tickets, jiraBaseUrl, onTicketUpdated, onS
             <div className="Column__header">
               <div className="Column__headerLeft">
                 <span className={`StatusPill StatusPill--${col.status}`}>{col.label}</span>
-                <span className="Column__count">{colTickets.length}</span>
+                {colTickets.length > 0 && (
+                  <span className="Column__count">{colTickets.length}</span>
+                )}
               </div>
               <div className="Column__actions">
                 <button className="IconButton IconButton--small" title="Add ticket" onClick={onAddTicket}>
-                  <PlusIcon />
-                </button>
-                <button className="IconButton IconButton--small" title="More options">
-                  <MoreIcon />
+                  <Plus size={14} />
                 </button>
               </div>
             </div>
 
             <div className="Column__list">
               {colTickets.length === 0 && !isDropTarget && (
-                <div className="EmptyState" style={{ padding: '24px 12px' }}>
-                  <p style={{ fontSize: 12, color: 'var(--pdTextSubtle)', margin: 0 }}>No tickets</p>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '32px 12px', gap: 8, opacity: 0.5 }}>
+                  <svg viewBox="0 0 24 24" fill="none" style={{ width: 24, height: 24, color: 'var(--pdTextSubtle)' }}>
+                    <rect x="3" y="3" width="18" height="18" rx="3" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 2"/>
+                  </svg>
+                  <p style={{ fontSize: 12, color: 'var(--pdTextSubtle)', margin: 0 }}>Empty</p>
                 </div>
               )}
               {colTickets.map((ticket) => (
@@ -375,7 +352,7 @@ export default function KanbanBoard({ tickets, jiraBaseUrl, onTicketUpdated, onS
             </div>
 
             <button className="Column__addBtn" onClick={onAddTicket}>
-              <PlusIcon />
+              <Plus size={13} />
               Add ticket
             </button>
           </div>

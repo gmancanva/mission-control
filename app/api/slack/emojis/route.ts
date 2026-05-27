@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getBotToken } from '@/lib/slack'
 
+export const dynamic = 'force-dynamic'
+
 let cache: Record<string, string> | null = null
 let cacheTs = 0
 const CACHE_TTL = 60 * 60 * 1000 // 1 hour

@@ -1857,15 +1857,6 @@ html, body {
   background: linear-gradient(to right, var(--pdAccent06), transparent);
   pointer-events: none;
 }
-.PdTopbar__title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--pdTextStrong);
-  letter-spacing: -0.01em;
-}
 .PdTopbar__crumb { color: var(--pdTextMuted); font-weight: 500; }
 .PdTopbar__sep   { color: var(--pdTextSubtle); }
 .PdTopbar__spacer { flex: 1; }

@@ -346,7 +346,6 @@ export default function DashboardPage() {
   }
 
   const activeNav = NAV_ITEMS.find((n) => n.id === activeView)
-  const topbarTitle = activeView === 'settings' ? 'Settings' : activeView === 'updates' ? 'Mission Control' : activeView === 'jira-projects' ? 'Jira Projects' : activeView === 'comms' ? 'Mentions' : (activeNav?.label ?? 'Mission Control')
 
   return (
     <div style={{ display: 'flex', height: '100vh', background: 'var(--pdSurface0)', overflow: 'hidden' }}>
@@ -507,9 +506,6 @@ export default function DashboardPage() {
 
         {/* Topbar */}
         <header className="PdTopbar">
-          <div className="PdTopbar__title">
-            <span>{topbarTitle}</span>
-          </div>
           <div className="PdTopbar__spacer" />
 
           {error && (

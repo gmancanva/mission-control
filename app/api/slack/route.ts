@@ -75,22 +75,23 @@ async function resolveUsers(messages: SlackMessage[]): Promise<SlackMessage[]> {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    if (searchParams.get('bust') === '1') {
-      bustCache()
-    }
+    const isBust = searchParams.get('bust') === '1'
 
-    // If bot token is configured, attempt live fetch (auto-discovers channels if SLACK_CHANNEL_IDS is empty)
-    if (getBotToken()) {
+    // Explicit sync request: attempt live fetch, write to disk on success
+    if (isBust && getBotToken()) {
+      bustCache()
       try {
         const messages = await fetchMessages()
-        // fetchMessages returns [] when it can't reach any channels — fall through to cache in that case
+        // fetchMessages returns [] when it can't reach any channels — fall through to disk cache
         if (messages.length > 0) {
-          return NextResponse.json({ messages, synced_at: new Date().toISOString() })
+          const payload = { synced_at: new Date().toISOString(), messages }
+          fs.writeFileSync(CACHE_PATH, JSON.stringify(payload, null, 2))
+          return NextResponse.json(payload)
         }
-      } catch { /* fall through to disk cache */ }
+      } catch { /* fall through to disk cache below */ }
     }
 
-    // Fall back to disk cache (written by live fetch or by MCP-based sync)
+    // Regular GET (or live fetch returned nothing): serve disk cache — always fast
     if (fs.existsSync(CACHE_PATH)) {
       const raw = fs.readFileSync(CACHE_PATH, 'utf-8')
       const data = JSON.parse(raw) as { synced_at?: string; messages: SlackMessage[] }

@@ -326,7 +326,9 @@ export default function DashboardPage() {
   }
 
   async function syncAll() {
-    await Promise.all(['jira', 'canva', 'figma', 'slack'].map(key => syncSource(key)))
+    // Slack live fetch is unreliable on Enterprise (fires in background, doesn't block)
+    syncSource('slack')
+    await Promise.all(['jira', 'canva', 'figma'].map(key => syncSource(key)))
   }
 
   function copyMcpPrompt(key: string) {
@@ -430,7 +432,7 @@ export default function DashboardPage() {
           }}>
             {/* Sync all button */}
             {(() => {
-              const isAnySyncing = ['jira', 'canva', 'figma', 'slack'].some(k => syncingSources.has(k))
+              const isAnySyncing = ['jira', 'canva', 'figma'].some(k => syncingSources.has(k))
               return (
                 <button
                   onClick={syncAll}
@@ -458,7 +460,7 @@ export default function DashboardPage() {
               { key: 'jira', label: 'Jira', mcp: false },
               { key: 'canva', label: 'Canva', mcp: false },
               { key: 'figma', label: 'Figma', mcp: false },
-              { key: 'slack', label: 'Slack', mcp: false },
+              { key: 'slack', label: 'Slack', mcp: true },
               { key: 'calendar', label: 'Calendar', mcp: true },
             ] as { key: string; label: string; mcp: boolean }[]).map(({ key, label, mcp }) => {
               const ts = sourceSyncTimes[key]

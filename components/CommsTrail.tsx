@@ -1,11 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ExternalLink, Plus, Bookmark, Check, Circle, MessageSquare, ChevronDown, RefreshCw } from 'lucide-react'
+import { ExternalLink, Plus, Bookmark, Check, Circle, MessageSquare, ChevronDown } from 'lucide-react'
 import SlackText from '@/components/SlackText'
 import ReactionBar from '@/components/ReactionBar'
 import Tooltip from '@/components/Tooltip'
-import { loadAvatars, getGlobalAvatars } from '@/lib/avatarStore'
+import { SourceBadge, MentionAvatar, SlackLogo, CanvaLogo, FigmaLogo, JiraLogo } from '@/components/MentionShared'
 import { BTN_BASE, BTN_DEFAULT, BTN_ACTIVE_GREEN, BTN_ACTIVE_BLUE, BTN_ACTIVE_AMBER, BTN_PURPLE, BTN_PURPLE_ACTIVE } from '@/lib/cardStyles'
 import TemplateTaskModal from '@/components/TemplateTaskModal'
 import type { JiraEpic } from '@/lib/jira'
@@ -63,59 +63,6 @@ type TimeFilter = 'today' | 'week' | 'month' | 'all'
 type PlatformFilter = 'all' | 'jira' | 'slack' | 'canva' | 'figma'
 type ItemFlags = Record<string, { completed?: boolean; bookmarked?: boolean }>
 
-// ─── Brand logos ────────────────────────────────────────────────────────────
-
-function SlackLogo({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 54 54" fill="none">
-      <path d="M19.712.133a5.381 5.381 0 0 0-5.376 5.387 5.381 5.381 0 0 0 5.376 5.386h5.376V5.52A5.381 5.381 0 0 0 19.712.133m0 14.365H5.376A5.381 5.381 0 0 0 0 19.884a5.381 5.381 0 0 0 5.376 5.387h14.336a5.381 5.381 0 0 0 5.376-5.387 5.381 5.381 0 0 0-5.376-5.386" fill="#2EB67D"/>
-      <path d="M53.76 19.884a5.381 5.381 0 0 0-5.376-5.386 5.381 5.381 0 0 0-5.376 5.386v5.387h5.376a5.381 5.381 0 0 0 5.376-5.387m-14.336 0V5.52A5.381 5.381 0 0 0 34.048.133a5.381 5.381 0 0 0-5.376 5.387v14.364a5.381 5.381 0 0 0 5.376 5.387 5.381 5.381 0 0 0 5.376-5.387" fill="#36C5F0"/>
-      <path d="M34.048 54a5.381 5.381 0 0 0 5.376-5.387 5.381 5.381 0 0 0-5.376-5.386h-5.376v5.386A5.381 5.381 0 0 0 34.048 54m0-14.365h14.336a5.381 5.381 0 0 0 5.376-5.387 5.381 5.381 0 0 0-5.376-5.386H34.048a5.381 5.381 0 0 0-5.376 5.386 5.381 5.381 0 0 0 5.376 5.387" fill="#ECB22E"/>
-      <path d="M0 34.248a5.381 5.381 0 0 0 5.376 5.387 5.381 5.381 0 0 0 5.376-5.387v-5.386H5.376A5.381 5.381 0 0 0 0 34.248m14.336 0v14.365A5.381 5.381 0 0 0 19.712 54a5.381 5.381 0 0 0 5.376-5.387V34.248a5.381 5.381 0 0 0-5.376-5.386 5.381 5.381 0 0 0-5.376 5.386" fill="#E01E5A"/>
-    </svg>
-  )
-}
-
-function CanvaLogo({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <circle cx="16" cy="16" r="16" fill="#7D2AE8"/>
-      <path d="M22.4 20.5c-.9 1.4-2.4 2.3-4.4 2.3-3.2 0-5.5-2.4-5.5-5.8s2.3-5.8 5.5-5.8c1.9 0 3.3.8 4.3 2l2-1.9C22.8 9.8 20.6 9 18 9c-4.7 0-8 3.4-8 8s3.3 8 8 8c2.7 0 4.9-1.1 6.3-2.8l-1.9-1.7z" fill="white"/>
-    </svg>
-  )
-}
-
-function JiraLogo({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-      <path d="M15.9 2L2 15.9l5.1 5.1 3-3 8.8 8.8-3 3 5.1 5.1L30 21.1z" fill="#2684FF"/>
-      <path d="M15.9 2l-5 14 5.1 5.1 5-14z" fill="url(#jira-grad)"/>
-      <path d="M16 16l-5 14 5.1 5.1 5-14z" fill="url(#jira-grad2)"/>
-      <defs>
-        <linearGradient id="jira-grad" x1="13" y1="14" x2="18" y2="8" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#0052CC"/>
-          <stop offset="1" stopColor="#2684FF"/>
-        </linearGradient>
-        <linearGradient id="jira-grad2" x1="14" y1="28" x2="19" y2="20" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#0052CC"/>
-          <stop offset="1" stopColor="#2684FF"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  )
-}
-
-function FigmaLogo({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 38 57" fill="none">
-      <path d="M19 28.5a9.5 9.5 0 1 1 19 0 9.5 9.5 0 0 1-19 0z" fill="#1ABCFE"/>
-      <path d="M0 47.5A9.5 9.5 0 0 1 9.5 38H19v9.5a9.5 9.5 0 0 1-19 0z" fill="#0ACF83"/>
-      <path d="M19 0v19h9.5a9.5 9.5 0 0 0 0-19H19z" fill="#FF7262"/>
-      <path d="M0 9.5A9.5 9.5 0 0 0 9.5 19H19V0H9.5A9.5 9.5 0 0 0 0 9.5z" fill="#F24E1E"/>
-      <path d="M0 28.5A9.5 9.5 0 0 0 9.5 38H19V19H9.5A9.5 9.5 0 0 0 0 28.5z" fill="#A259FF"/>
-    </svg>
-  )
-}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -235,40 +182,6 @@ function buildFeed(
   return entries
 }
 
-// ─── Source badge ─────────────────────────────────────────────────────────────
-
-function SourceBadge({ source }: { source: 'jira' | 'slack' | 'canva' | 'figma' }) {
-  if (source === 'slack') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border bg-[#4A154B]/10 text-[#611f69] border-[#4A154B]/20 dark:bg-[#611f69]/20 dark:text-[#e8b4f8] dark:border-[#611f69]/30">
-        <SlackLogo size={12} />
-        Slack
-      </span>
-    )
-  }
-  if (source === 'canva') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-800/40">
-        <CanvaLogo size={12} />
-        Canva
-      </span>
-    )
-  }
-  if (source === 'figma') {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/20 dark:text-rose-300 dark:border-rose-800/40">
-        <FigmaLogo size={12} />
-        Figma
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-medium border bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800">
-      <JiraLogo size={12} />
-      Jira
-    </span>
-  )
-}
 
 // ─── Entry card ───────────────────────────────────────────────────────────────
 
@@ -339,49 +252,6 @@ function FileAttachment({ file }: { file: NonNullable<ThreadMessage['files']>[nu
   )
 }
 
-const SLACK_CDN_PREFIXES = [
-  'https://avatars.slack-edge.com/',
-  'https://a.slack-edge.com/',
-  'https://files.slack.com/',
-]
-
-function toProxiedUrl(url: string | undefined): string | undefined {
-  if (!url) return undefined
-  if (SLACK_CDN_PREFIXES.some(p => url.startsWith(p))) {
-    return `/api/slack/image?url=${encodeURIComponent(url)}`
-  }
-  return url
-}
-
-function Avatar({ author, avatarUrl, size = 24 }: { author: string; avatarUrl?: string; size?: number }) {
-  const [resolvedUrl, setResolvedUrl] = useState<string | undefined>(
-    toProxiedUrl(avatarUrl ?? getGlobalAvatars()?.[author])
-  )
-
-  useEffect(() => {
-    const direct = avatarUrl ?? getGlobalAvatars()?.[author]
-    if (direct) { setResolvedUrl(toProxiedUrl(direct)); return }
-    loadAvatars().then(map => {
-      const url = map[author]
-      if (url) setResolvedUrl(toProxiedUrl(url))
-    })
-  }, [author, avatarUrl]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const initials = author.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
-  const colors = ['bg-violet-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-sky-500']
-  const color = colors[author.charCodeAt(0) % colors.length]
-
-  return resolvedUrl ? (
-    <img src={resolvedUrl} alt={author} width={size} height={size}
-      onError={() => setResolvedUrl(undefined)}
-      className="rounded-full object-cover shrink-0" style={{ border: '1px solid var(--pdBorder)' }} />
-  ) : (
-    <div style={{ width: size, height: size, fontSize: size * 0.38 }}
-      className={`${color} rounded-full shrink-0 flex items-center justify-center text-white font-semibold`}>
-      {initials}
-    </div>
-  )
-}
 
 // ─── Figma/Canva @mention highlight ──────────────────────────────────────────
 
@@ -449,7 +319,7 @@ function FigmaCardBody({ mention }: { mention: FigmaMention }) {
             <div className="mt-2 space-y-2 pl-3 border-l-2 border-rose-200 dark:border-rose-800/50">
               {replies.map((r: FigmaReply) => (
                 <div key={r.id} className="flex gap-2 items-start">
-                  <Avatar author={r.author} avatarUrl={r.author_avatar_url} size={20} />
+                  <MentionAvatar author={r.author} avatarUrl={r.author_avatar_url} size={20} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-semibold mr-1.5" style={{ color: 'var(--pdTextMuted)' }}>{r.author}</span>
                     <span className="text-sm" style={{ color: 'var(--pdTextSubtle)' }}>{formatDate(r.created_at)}</span>
@@ -513,7 +383,7 @@ function CanvaCardBody({ mention }: { mention: CanvaMention }) {
             <div className="mt-2 space-y-2 pl-3 border-l-2 border-violet-200 dark:border-violet-800/50">
               {replies.map((r) => (
                 <div key={r.id} className="flex gap-2 items-start">
-                  <Avatar author={r.author} avatarUrl={r.author_avatar_url} size={20} />
+                  <MentionAvatar author={r.author} avatarUrl={r.author_avatar_url} size={20} />
                   <div className="flex-1 min-w-0">
                     <span className="text-sm font-semibold mr-1.5" style={{ color: 'var(--pdTextMuted)' }}>{r.author}</span>
                     <span className="text-sm" style={{ color: 'var(--pdTextSubtle)' }}>{formatDate(r.created_at)}</span>
@@ -546,7 +416,7 @@ function ThreadMessages({ thread, syncedAt, live }: { thread: ThreadMessage[]; s
       </div>
       {thread.map((msg, i) => (
         <div key={msg.ts || i} className="flex gap-2.5 items-start">
-          <Avatar author={msg.author} avatarUrl={msg.avatar_url} size={26} />
+          <MentionAvatar author={msg.author} avatarUrl={msg.avatar_url} size={26} />
           <div className="flex-1 min-w-0 rounded-xl px-3 py-2" style={
             msg.is_parent
               ? { background: 'var(--pdSurface2)', border: '1px solid var(--pdBorder)' }
@@ -596,13 +466,6 @@ function EntryCard({
   const [summaryState, setSummaryState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle')
 
   // Thread reply state
-  const [showReply, setShowReply] = useState(false)
-  const [replyDraft, setReplyDraft] = useState('')
-  const [replyGenerating, setReplyGenerating] = useState(false)
-  const [replySending, setReplySending] = useState(false)
-  const [replySent, setReplySent] = useState(false)
-  const [replyCopied, setReplyCopied] = useState(false)
-  const [replyError, setReplyError] = useState<string | null>(null)
 
   async function summarizeThread() {
     if (!thread.thread?.length) return
@@ -622,59 +485,6 @@ function EntryCard({
       }
     } catch {
       setSummaryState('error')
-    }
-  }
-
-  async function draftThreadReply() {
-    setReplyGenerating(true)
-    setShowReply(true)
-    setReplySent(false)
-    setReplyError(null)
-    try {
-      const contextText = thread.thread
-        ? thread.thread.map(m => `${m.author}: ${m.text}`).join('\n\n')
-        : entry.summary
-      const res = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'draft', text: contextText, source: 'slack', project: entry.project, author: '' }),
-      })
-      const data = await res.json() as { result?: string; error?: string }
-      if (data.error) {
-        setReplyError(`AI error: ${data.error}`)
-      } else {
-        setReplyDraft(data.result ?? '')
-      }
-    } catch (err) {
-      setReplyError(err instanceof Error ? err.message : 'Failed to generate draft')
-    } finally {
-      setReplyGenerating(false)
-    }
-  }
-
-  async function sendThreadReply() {
-    if (!replyDraft.trim()) return
-    setReplySending(true)
-    setReplyError(null)
-    try {
-      const res = await fetch('/api/slack/reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel: thread.channel, thread_ts: thread.ts, message: replyDraft }),
-      })
-      const data = await res.json() as { ok?: boolean; error?: string }
-      if (data.ok) {
-        setReplySent(true)
-        setReplyDraft('')
-        setTimeout(() => { setReplySent(false); setShowReply(false) }, 2000)
-      } else {
-        await navigator.clipboard.writeText(replyDraft).catch(() => {})
-        window.open(entry.link, '_blank')
-        setReplyCopied(true)
-        setTimeout(() => { setReplyCopied(false); setShowReply(false) }, 2500)
-      }
-    } finally {
-      setReplySending(false)
     }
   }
 
@@ -705,7 +515,7 @@ function EntryCard({
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
             {entry.author && (
               <>
-                <Avatar author={entry.author} avatarUrl={entry.avatarUrl} size={24} />
+                <MentionAvatar author={entry.author} avatarUrl={entry.avatarUrl} size={24} />
                 <span className="text-sm font-bold" style={{ color: 'var(--pdTextStrong)' }}>{entry.author}</span>
               </>
             )}
@@ -758,8 +568,7 @@ function EntryCard({
               {isCompleted ? 'Resolved' : 'Resolve'}
             </button>
 
-            {/* Figma reply button */}
-            {entry.source === 'figma' && (
+            {entry.source === 'figma' && entry.link && entry.link !== '#' && (
               <a
                 href={entry.link}
                 target="_blank"
@@ -767,8 +576,8 @@ function EntryCard({
                 className={BTN_DEFAULT}
                 onClick={e => e.stopPropagation()}
               >
-                <MessageSquare size={11} />
-                Reply in Figma
+                <ExternalLink size={11} />
+                Open in Figma
               </a>
             )}
           </div>
@@ -797,13 +606,6 @@ function EntryCard({
                       ) : (
                         <div className="flex flex-wrap gap-2">
                           <button
-                            onClick={showReply ? () => setShowReply(false) : draftThreadReply}
-                            className={showReply ? BTN_ACTIVE_BLUE : BTN_DEFAULT}
-                          >
-                            <MessageSquare size={11} />
-                            Reply
-                          </button>
-                          <button
                             onClick={summarizeThread}
                             disabled={summaryState === 'loading'}
                             className={BTN_DEFAULT}
@@ -813,57 +615,11 @@ function EntryCard({
                             </svg>
                             {summaryState === 'loading' ? 'Summarising…' : 'Summarise'}
                           </button>
-                        </div>
-                      )}
-
-                      {/* Reply panel */}
-                      {showReply && (
-                        <div className="rounded-lg border border-sky-200 dark:border-sky-800/50 bg-sky-50/50 dark:bg-sky-950/20 p-3 space-y-2">
-                          {replyCopied ? (
-                            <div className="flex items-center gap-2 py-2">
-                              <Check size={15} className="shrink-0" style={{ color: 'var(--pdStatusDoneFg)' }} />
-                              <span className="text-sm font-medium" style={{ color: 'var(--pdStatusDoneFg)' }}>Draft copied — paste it in the Slack thread</span>
-                            </div>
-                          ) : replySent ? (
-                            <div className="flex items-center gap-2 py-2">
-                              <Check size={15} className="shrink-0" style={{ color: 'var(--pdStatusDoneFg)' }} />
-                              <span className="text-sm font-medium" style={{ color: 'var(--pdStatusDoneFg)' }}>Reply sent</span>
-                            </div>
-                          ) : (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium text-sky-700 dark:text-sky-400">Reply in thread</span>
-                                <button
-                                  onClick={draftThreadReply}
-                                  disabled={replyGenerating}
-                                  className="inline-flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200 disabled:opacity-50 transition-colors"
-                                >
-                                  <RefreshCw size={11} className={replyGenerating ? 'animate-spin' : ''} />
-                                  {replyGenerating ? 'Generating…' : 'Regenerate'}
-                                </button>
-                              </div>
-                              <textarea
-                                value={replyDraft}
-                                onChange={e => setReplyDraft(e.target.value)}
-                                placeholder={replyGenerating ? 'Drafting reply…' : 'Your reply…'}
-                                rows={3}
-                                className="w-full text-sm rounded-lg px-3 py-2 resize-none leading-relaxed focus:outline-none border border-sky-200 dark:border-sky-800/60 focus:border-sky-400 dark:focus:border-sky-600"
-                                style={{ background: 'var(--pdSurface0)', color: 'var(--pdTextBase)' }}
-                              />
-                              {replyError && <p className="text-sm text-red-500">{replyError}</p>}
-                              <div className="flex gap-2">
-                                <button
-                                  onClick={sendThreadReply}
-                                  disabled={replySending || !replyDraft.trim() || replyGenerating}
-                                  className="text-sm bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white px-4 py-1.5 rounded-md font-medium transition-colors"
-                                >
-                                  {replySending ? 'Opening…' : 'Copy & Open in Slack'}
-                                </button>
-                                <button onClick={() => setShowReply(false)} className="text-sm px-2 py-1.5 transition-colors" style={{ color: 'var(--pdTextMuted)' }}>
-                                  Cancel
-                                </button>
-                              </div>
-                            </>
+                          {entry.link && entry.link !== '#' && (
+                            <a href={entry.link} target="_blank" rel="noopener noreferrer" className={BTN_DEFAULT} onClick={e => e.stopPropagation()}>
+                              <ExternalLink size={11} />
+                              Open in Slack
+                            </a>
                           )}
                         </div>
                       )}

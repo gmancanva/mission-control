@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { getConfig } from '@/lib/db'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY
+  const apiKey = getConfig('anthropic.apiKey') || process.env.ANTHROPIC_API_KEY || ''
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'ANTHROPIC_API_KEY not configured' }), {
       status: 503, headers: { 'Content-Type': 'application/json' },

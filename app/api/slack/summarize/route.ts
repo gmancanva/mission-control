@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
+import { getConfig } from '@/lib/db'
+
+export const dynamic = 'force-dynamic'
 
 type ThreadMessage = {
   author: string
@@ -9,9 +12,9 @@ type ThreadMessage = {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = process.env.OPENAI_API_KEY
+  const apiKey = getConfig('anthropic.apiKey') || process.env.ANTHROPIC_API_KEY || ''
   if (!apiKey) {
-    return NextResponse.json({ error: 'OPENAI_API_KEY not configured' }, { status: 503 })
+    return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 503 })
   }
 
   try {
@@ -27,9 +30,9 @@ export async function POST(request: NextRequest) {
       })
       .join('\n\n')
 
-    const client = new OpenAI({ apiKey })
-    const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const client = new Anthropic({ apiKey })
+    const response = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 300,
       messages: [{
         role: 'user',
@@ -37,7 +40,7 @@ export async function POST(request: NextRequest) {
       }],
     })
 
-    const summary = response.choices[0]?.message?.content?.trim() ?? ''
+    const summary = (response.content[0] as { type: string; text: string }).text?.trim() ?? ''
     return NextResponse.json({ summary })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error'

@@ -38,6 +38,12 @@ function canvaCredsSource(): 'db' | 'env' | 'none' {
   return 'none'
 }
 
+function aiSource(): 'db' | 'env' | 'none' {
+  if (getConfig('anthropic.apiKey')) return 'db'
+  if (process.env.ANTHROPIC_API_KEY) return 'env'
+  return 'none'
+}
+
 export async function GET() {
   const jiraSrc = jiraSource()
   const googleSrc = googleCredsSource()
@@ -94,6 +100,11 @@ export async function GET() {
       connected: await canvaIsConnected(),
       myUserId: canvaGetMyUserId(),
       source: canvaCredsSource(),
+    },
+    ai: {
+      anthropicKeySet: !!(getConfig('anthropic.apiKey') ?? process.env.ANTHROPIC_API_KEY),
+      openaiKeySet: !!(getConfig('openai.apiKey') ?? process.env.OPENAI_API_KEY),
+      source: aiSource(),
     },
   })
 }
@@ -161,6 +172,12 @@ export async function POST(request: NextRequest) {
   if (type === 'canva') {
     if (values.clientId) setConfig('canva.clientId', values.clientId)
     if (values.clientSecret) setConfig('canva.clientSecret', values.clientSecret)
+    return NextResponse.json({ ok: true })
+  }
+
+  if (type === 'ai') {
+    if (values.anthropicApiKey) setConfig('anthropic.apiKey', values.anthropicApiKey)
+    if (values.openaiApiKey) setConfig('openai.apiKey', values.openaiApiKey)
     return NextResponse.json({ ok: true })
   }
 

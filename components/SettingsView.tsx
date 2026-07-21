@@ -196,6 +196,11 @@ type SettingsData = {
     myUserId: string
     source: 'db' | 'env' | 'none'
   }
+  ai: {
+    anthropicKeySet: boolean
+    openaiKeySet: boolean
+    source: 'db' | 'env' | 'none'
+  }
 }
 
 type Props = {
@@ -1189,6 +1194,132 @@ const COLOR_MODES: { id: ColorMode; label: string }[] = [
   { id: 'system', label: 'System' },
 ]
 
+// ── AI card ───────────────────────────────────────────────────────────────────
+
+function AiSparkleIcon() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <path d="M12 2l2.4 7.2L22 12l-7.6 2.8L12 22l-2.4-7.2L2 12l7.6-2.8L12 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+function AiCard({ data, onSaved }: { data: SettingsData['ai']; onSaved: () => void }) {
+  const isConfigured = data.source !== 'none'
+  const [editing, setEditing] = useState(!isConfigured)
+  const [form, setForm] = useState({ anthropicApiKey: '', openaiApiKey: '' })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [showAnthropicKey, setShowAnthropicKey] = useState(false)
+  const [showOpenaiKey, setShowOpenaiKey] = useState(false)
+
+  async function handleSave() {
+    setSaving(true); setError(null)
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'ai', ...form }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      onSaved()
+      setEditing(false)
+      setForm({ anthropicApiKey: '', openaiApiKey: '' })
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Save failed')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const sourceLabel = data.source === 'env' ? 'via .env' : data.source === 'db' ? 'via settings' : null
+  const description = isConfigured && !editing
+    ? `Anthropic${data.anthropicKeySet ? ' ✓' : ' ✗'}  ·  OpenAI${data.openaiKeySet ? ' ✓' : ' ✗'}`
+    : 'Enable AI reply drafts, thread summaries, and the AI chat panel'
+
+  return (
+    <ConnectionCard
+      icon={<AiSparkleIcon />}
+      name="AI Features"
+      description={description}
+      iconBg="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+      iconColor="#fff"
+      status={isConfigured && !editing ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ConnectedBadge />
+          {sourceLabel && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, color: 'var(--pdTextSubtle)' }}>
+              {sourceLabel}
+              {data.source === 'env' && <EnvTooltip />}
+            </span>
+          )}
+        </div>
+      ) : undefined}
+      onEdit={isConfigured && !editing ? () => setEditing(true) : undefined}
+    >
+      {editing && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ padding: '10px 12px', background: 'var(--pdSurface2)', borderRadius: 6, fontSize: 12, color: 'var(--pdTextMuted)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--pdTextBase)' }}>Anthropic key</strong> powers reply drafts, thread summaries, and the AI chat panel.{' '}
+            <strong style={{ color: 'var(--pdTextBase)' }}>OpenAI key</strong> is optional — used as a fallback if set.{' '}
+            Get your Anthropic key at <strong style={{ color: 'var(--pdTextBase)' }}>console.anthropic.com</strong> → API Keys.
+          </div>
+          <div style={{ position: 'relative' }}>
+            <Field
+              label="Anthropic API Key"
+              value={form.anthropicApiKey}
+              onChange={v => setForm(f => ({ ...f, anthropicApiKey: v }))}
+              type={showAnthropicKey ? 'text' : 'password'}
+              placeholder={data.anthropicKeySet ? '••••••••  (leave blank to keep)' : 'sk-ant-...'}
+              hint="Required for AI draft replies, summaries, and chat"
+            />
+            <button
+              type="button"
+              onClick={() => setShowAnthropicKey(s => !s)}
+              style={{ position: 'absolute', right: 8, top: 24, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pdTextSubtle)', fontSize: 11 }}
+            >
+              {showAnthropicKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          <div style={{ position: 'relative' }}>
+            <Field
+              label="OpenAI API Key (optional)"
+              value={form.openaiApiKey}
+              onChange={v => setForm(f => ({ ...f, openaiApiKey: v }))}
+              type={showOpenaiKey ? 'text' : 'password'}
+              placeholder={data.openaiKeySet ? '••••••••  (leave blank to keep)' : 'sk-...'}
+              hint="Optional — get from platform.openai.com"
+            />
+            <button
+              type="button"
+              onClick={() => setShowOpenaiKey(s => !s)}
+              style={{ position: 'absolute', right: 8, top: 24, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pdTextSubtle)', fontSize: 11 }}
+            >
+              {showOpenaiKey ? 'Hide' : 'Show'}
+            </button>
+          </div>
+          {error && <p style={{ fontSize: 12, color: 'var(--pdPrioHigh)', margin: 0 }}>{error}</p>}
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            {isConfigured && (
+              <button className="PdButton PdButton--tertiary PdButton--small" onClick={() => { setEditing(false); setError(null) }}>
+                Cancel
+              </button>
+            )}
+            <button
+              className="PdButton PdButton--primary PdButton--small"
+              onClick={handleSave}
+              disabled={saving}
+              style={{ opacity: saving ? 0.6 : 1 }}
+            >
+              {saving ? 'Saving…' : 'Save keys'}
+            </button>
+          </div>
+        </div>
+      )}
+    </ConnectionCard>
+  )
+}
+
 function AppearanceSection() {
   const { colorMode, setColorMode, accent, setAccent, font, setFont } = useTheme()
   const [hoveredAccent, setHoveredAccent] = useState<string | null>(null)
@@ -1425,6 +1556,20 @@ export default function SettingsView({ urlError, canvaUrlError }: Props) {
               urlError={urlError}
             />
           </div>
+        )}
+      </section>
+
+      <section>
+        <h3 style={{
+          fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+          color: 'var(--pdTextSubtle)', margin: '0 0 12px',
+        }}>
+          AI Features
+        </h3>
+        {data === null ? (
+          <div style={{ fontSize: 13, color: 'var(--pdTextSubtle)', padding: '24px 0' }}>Loading…</div>
+        ) : (
+          <AiCard data={data.ai} onSaved={load} />
         )}
       </section>
 

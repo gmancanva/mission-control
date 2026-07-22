@@ -105,14 +105,6 @@ export function getPinnedDecisions(): PinnedDecision[] {
     .all() as PinnedDecision[]
 }
 
-export function updateNote(sourceId: string, note: string): void {
-  const db = getDb()
-  db.prepare('UPDATE pinned_decisions SET note = ? WHERE source_id = ?').run(
-    note,
-    sourceId
-  )
-}
-
 export function saveOAuthToken(token: OAuthToken): void {
   const db = getDb()
   db.prepare(`

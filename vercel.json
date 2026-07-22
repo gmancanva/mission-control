@@ -11,6 +11,10 @@
     {
       "path": "/api/slack?bust=1",
       "schedule": "13 */1 * * *"
+    },
+    {
+      "path": "/api/figma",
+      "schedule": "23 */1 * * *"
     }
   ]
 }

@@ -16,7 +16,6 @@
     "lucide-react": "^1.16.0",
     "next": "14.2.35",
     "node-emoji": "^2.2.0",
-    "openai": "^6.36.0",
     "react": "^18",
     "react-dom": "^18"
   },

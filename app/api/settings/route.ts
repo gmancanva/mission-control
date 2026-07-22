@@ -6,6 +6,8 @@ import path from 'path'
 import fs from 'fs'
 import { DATA_DIR } from '@/lib/data-dir'
 
+export const dynamic = 'force-dynamic'
+
 const CALENDAR_CACHE_PATH = path.join(DATA_DIR, 'calendar-cache.json')
 
 function jiraSource(): 'db' | 'env' | 'none' {
@@ -103,7 +105,6 @@ export async function GET() {
     },
     ai: {
       anthropicKeySet: !!(getConfig('anthropic.apiKey') ?? process.env.ANTHROPIC_API_KEY),
-      openaiKeySet: !!(getConfig('openai.apiKey') ?? process.env.OPENAI_API_KEY),
       source: aiSource(),
     },
   })
@@ -177,7 +178,6 @@ export async function POST(request: NextRequest) {
 
   if (type === 'ai') {
     if (values.anthropicApiKey) setConfig('anthropic.apiKey', values.anthropicApiKey)
-    if (values.openaiApiKey) setConfig('openai.apiKey', values.openaiApiKey)
     return NextResponse.json({ ok: true })
   }
 

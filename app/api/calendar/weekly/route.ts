@@ -4,6 +4,8 @@ import fs from 'fs'
 import { isConfigured, isConnected, fetchWeeklyForCache } from '@/lib/google-calendar'
 import { DATA_DIR } from '@/lib/data-dir'
 
+export const dynamic = 'force-dynamic'
+
 const CACHE_PATH = path.join(DATA_DIR, 'calendar-cache.json')
 const WEEKS_CACHE_PATH = path.join(DATA_DIR, 'calendar-weeks-cache.json')
 

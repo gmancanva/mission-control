@@ -198,7 +198,6 @@ type SettingsData = {
   }
   ai: {
     anthropicKeySet: boolean
-    openaiKeySet: boolean
     source: 'db' | 'env' | 'none'
   }
 }
@@ -462,7 +461,10 @@ function GoogleCalendarCard({
   urlError?: string | null
 }) {
   const credsConfigured = creds.source !== 'none'
-  const [editingCreds, setEditingCreds] = useState(!credsConfigured && !calendar.connected)
+  // Don't auto-open the credentials form: Canva security blocks provisioning Google
+  // OAuth creds, so for this workspace the form is a dead end (kept behind a link
+  // in case that ever changes). Calendar syncs via Claude instead.
+  const [editingCreds, setEditingCreds] = useState(false)
   const [form, setForm] = useState({ clientId: '', clientSecret: '' })
   const [saving, setSaving] = useState(false)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -508,11 +510,11 @@ function GoogleCalendarCard({
       : `Connected${syncLabel ? ` · ${syncLabel}` : ''}`
     : credsConfigured && !editingCreds
     ? 'Credentials saved — authorise Google Calendar access below'
-    : 'Connect Google Calendar to track meetings and capacity'
+    : `Synced via Claude${syncLabel ? ` · ${syncLabel}` : ''} — in-app Google OAuth unavailable`
 
   const status = calendar.connected ? <ConnectedBadge /> : undefined
   const showEdit = credsConfigured && !editingCreds ? () => setEditingCreds(true) : undefined
-  const hasChildren = editingCreds || (!editingCreds && credsConfigured && !calendar.connected) || (!!urlError && !calendar.connected) || calendar.connected
+  const hasChildren = editingCreds || (!credsConfigured && !calendar.connected) || (!editingCreds && credsConfigured && !calendar.connected) || (!!urlError && !calendar.connected) || calendar.connected
 
   return (
     <ConnectionCard
@@ -534,6 +536,23 @@ function GoogleCalendarCard({
               borderRadius: 6, fontSize: 12, color: 'var(--pdStatusReviewFg)',
             }}>
               {(() => { try { return decodeURIComponent(urlError) } catch { return urlError } })()}
+            </div>
+          )}
+
+          {/* Canva security blocks Google OAuth — explain how syncing actually works */}
+          {!credsConfigured && !calendar.connected && !editingCreds && (
+            <div style={{ padding: '10px 12px', background: 'var(--pdSurface2)', borderRadius: 6, fontSize: 12, color: 'var(--pdTextMuted)', lineHeight: 1.6 }}>
+              Canva security blocks provisioning Google OAuth credentials, so this integration can&apos;t
+              connect in-app. Calendar data syncs through <strong style={{ color: 'var(--pdTextBase)' }}>Claude</strong> instead
+              — use the copy-prompt button in the sidebar, ask Claude to &ldquo;sync calendar&rdquo;, or let the
+              scheduled weekday task keep it fresh automatically.{' '}
+              <button
+                type="button"
+                onClick={() => setEditingCreds(true)}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--pdAccent06)', fontSize: 12, textDecoration: 'underline' }}
+              >
+                I have OAuth credentials anyway
+              </button>
             </div>
           )}
 
@@ -1207,11 +1226,10 @@ function AiSparkleIcon() {
 function AiCard({ data, onSaved }: { data: SettingsData['ai']; onSaved: () => void }) {
   const isConfigured = data.source !== 'none'
   const [editing, setEditing] = useState(!isConfigured)
-  const [form, setForm] = useState({ anthropicApiKey: '', openaiApiKey: '' })
+  const [form, setForm] = useState({ anthropicApiKey: '' })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showAnthropicKey, setShowAnthropicKey] = useState(false)
-  const [showOpenaiKey, setShowOpenaiKey] = useState(false)
 
   async function handleSave() {
     setSaving(true); setError(null)
@@ -1224,7 +1242,7 @@ function AiCard({ data, onSaved }: { data: SettingsData['ai']; onSaved: () => vo
       if (!res.ok) throw new Error('Save failed')
       onSaved()
       setEditing(false)
-      setForm({ anthropicApiKey: '', openaiApiKey: '' })
+      setForm({ anthropicApiKey: '' })
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Save failed')
     } finally {
@@ -1234,7 +1252,7 @@ function AiCard({ data, onSaved }: { data: SettingsData['ai']; onSaved: () => vo
 
   const sourceLabel = data.source === 'env' ? 'via .env' : data.source === 'db' ? 'via settings' : null
   const description = isConfigured && !editing
-    ? `Anthropic${data.anthropicKeySet ? ' ✓' : ' ✗'}  ·  OpenAI${data.openaiKeySet ? ' ✓' : ' ✗'}`
+    ? `Anthropic${data.anthropicKeySet ? ' ✓' : ' ✗'}`
     : 'Enable AI reply drafts, thread summaries, and the AI chat panel'
 
   return (
@@ -1261,8 +1279,7 @@ function AiCard({ data, onSaved }: { data: SettingsData['ai']; onSaved: () => vo
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div style={{ padding: '10px 12px', background: 'var(--pdSurface2)', borderRadius: 6, fontSize: 12, color: 'var(--pdTextMuted)', lineHeight: 1.6 }}>
             <strong style={{ color: 'var(--pdTextBase)' }}>Anthropic key</strong> powers reply drafts, thread summaries, and the AI chat panel.{' '}
-            <strong style={{ color: 'var(--pdTextBase)' }}>OpenAI key</strong> is optional — used as a fallback if set.{' '}
-            Get your Anthropic key at <strong style={{ color: 'var(--pdTextBase)' }}>console.anthropic.com</strong> → API Keys.
+            Get your key at <strong style={{ color: 'var(--pdTextBase)' }}>console.anthropic.com</strong> → API Keys.
           </div>
           <div style={{ position: 'relative' }}>
             <Field
@@ -1279,23 +1296,6 @@ function AiCard({ data, onSaved }: { data: SettingsData['ai']; onSaved: () => vo
               style={{ position: 'absolute', right: 8, top: 24, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pdTextSubtle)', fontSize: 11 }}
             >
               {showAnthropicKey ? 'Hide' : 'Show'}
-            </button>
-          </div>
-          <div style={{ position: 'relative' }}>
-            <Field
-              label="OpenAI API Key (optional)"
-              value={form.openaiApiKey}
-              onChange={v => setForm(f => ({ ...f, openaiApiKey: v }))}
-              type={showOpenaiKey ? 'text' : 'password'}
-              placeholder={data.openaiKeySet ? '••••••••  (leave blank to keep)' : 'sk-...'}
-              hint="Optional — get from platform.openai.com"
-            />
-            <button
-              type="button"
-              onClick={() => setShowOpenaiKey(s => !s)}
-              style={{ position: 'absolute', right: 8, top: 24, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pdTextSubtle)', fontSize: 11 }}
-            >
-              {showOpenaiKey ? 'Hide' : 'Show'}
             </button>
           </div>
           {error && <p style={{ fontSize: 12, color: 'var(--pdPrioHigh)', margin: 0 }}>{error}</p>}

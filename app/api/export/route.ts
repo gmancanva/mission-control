@@ -7,6 +7,8 @@ import {
   type PinnedDecision,
 } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const [epics, pinnedDecisions] = await Promise.all([

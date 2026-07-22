@@ -114,6 +114,8 @@
   --duration150: 150ms;
   --duration200: 200ms;
   --easeInOut: cubic-bezier(0.35, 0, 0.58, 1);
+  --easeOut: cubic-bezier(0.22, 1, 0.36, 1);      /* smooth deceleration for lifts/reveals */
+  --easeSpring: cubic-bezier(0.34, 1.56, 0.64, 1); /* gentle overshoot for tactile controls */
 }
 
 /* ============================================================
@@ -217,11 +219,13 @@
   --pdGradientAccentSoft: linear-gradient(135deg, var(--pdAccentA02) 0%, var(--pdAccentA01) 60%, transparent 100%);
 
   /* Shadows */
-  --pdShadowSm: 0 1px 2px rgba(64,44,16,.04), 0 2px 6px rgba(64,44,16,.05);
-  --pdShadowMd: 0 2px 6px rgba(64,44,16,.05), 0 12px 28px rgba(64,44,16,.08);
-  --pdShadowLg: 0 8px 24px rgba(64,44,16,.08), 0 32px 64px rgba(64,44,16,.10);
+  --pdShadowSm: 0 1px 1px rgba(64,44,16,.05), 0 2px 4px rgba(64,44,16,.05);
+  --pdShadowMd: 0 1px 2px rgba(64,44,16,.05), 0 4px 10px rgba(64,44,16,.06), 0 14px 30px rgba(64,44,16,.08);
+  --pdShadowLg: 0 2px 6px rgba(64,44,16,.06), 0 12px 28px rgba(64,44,16,.10), 0 36px 68px rgba(64,44,16,.12);
   --pdShadowDrag: 0 12px 24px rgba(64,44,16,.12), 0 24px 48px rgba(64,44,16,.10), 0 0 0 1px var(--pdAccent04);
   --pdShadowGlow: 0 0 0 4px var(--pdAccentA02);
+  --pdShadowAccent: 0 1px 2px rgba(0,0,0,.10), 0 4px 12px var(--pdAccentA02);
+  --pdShadowAccentHover: 0 2px 6px rgba(0,0,0,.12), 0 10px 24px var(--pdAccentA03);
 }
 
 /* ============================================================
@@ -289,11 +293,13 @@
   --pdGradientAccent: linear-gradient(135deg, var(--pdAccent03) 0%, var(--pdAccent02) 100%);
   --pdGradientAccentSoft: linear-gradient(135deg, var(--pdAccentA02) 0%, var(--pdAccentA01) 60%, transparent 100%);
 
-  --pdShadowSm: 0 1px 2px rgba(0,0,0,.3), 0 4px 12px rgba(0,0,0,.25);
-  --pdShadowMd: 0 4px 12px rgba(0,0,0,.35), 0 16px 36px rgba(0,0,0,.3);
-  --pdShadowLg: 0 12px 32px rgba(0,0,0,.4), 0 32px 72px rgba(0,0,0,.35);
+  --pdShadowSm: 0 1px 2px rgba(0,0,0,.35), 0 2px 6px rgba(0,0,0,.28);
+  --pdShadowMd: 0 2px 6px rgba(0,0,0,.35), 0 8px 20px rgba(0,0,0,.34), 0 18px 40px rgba(0,0,0,.30);
+  --pdShadowLg: 0 6px 18px rgba(0,0,0,.42), 0 18px 44px rgba(0,0,0,.40), 0 40px 80px rgba(0,0,0,.36);
   --pdShadowDrag: 0 12px 24px rgba(0,0,0,.5), 0 24px 48px rgba(0,0,0,.4), 0 0 0 1px var(--pdAccent06);
   --pdShadowGlow: 0 0 0 4px var(--pdAccentA02);
+  --pdShadowAccent: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px var(--pdAccentA02);
+  --pdShadowAccentHover: 0 2px 8px rgba(0,0,0,.45), 0 12px 28px var(--pdAccentA03);
 }
 
 /* ============================================================
@@ -1235,8 +1241,12 @@ html, body {
   height: 6px;
   border-radius: 50%;
   background: var(--pdStatusTodoDot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--pdStatusTodoDot) 18%, transparent);
   flex-shrink: 0;
 }
+.StatusPill--progress::before { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pdStatusProgressDot) 20%, transparent); }
+.StatusPill--review::before   { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pdStatusReviewDot) 20%, transparent); }
+.StatusPill--done::before     { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pdStatusDoneDot) 20%, transparent); }
 .StatusPill--todo     { background: var(--pdStatusTodoBg);     color: var(--pdStatusTodoFg);     border-color: var(--pdStatusTodoBorder); }
 .StatusPill--todo::before     { background: var(--pdStatusTodoDot); }
 .StatusPill--progress { background: var(--pdStatusProgressBg); color: var(--pdStatusProgressFg); border-color: var(--pdStatusProgressBorder); }
@@ -1287,11 +1297,11 @@ html, body {
 .JiraKey--clickable {
   cursor: pointer;
   padding: 2px 6px;
-  border-radius: 4px;
-  transition: background-color 150ms;
+  border-radius: 5px;
+  transition: background 150ms var(--easeOut), color 150ms var(--easeOut), box-shadow 150ms var(--easeOut);
   text-decoration: none;
 }
-.JiraKey--clickable:hover { background: var(--pdSurface3); color: var(--pdTextStrong); }
+.JiraKey--clickable:hover { background: var(--pdAccentA01); color: var(--pdAccent07); box-shadow: inset 0 0 0 1px var(--pdAccentA02); }
 
 /* ============================================================
    TEAM TAG
@@ -1798,13 +1808,31 @@ html, body {
 .PdNavItem:nth-child(5) { animation-delay: 105ms; }
 .PdNavItem:nth-child(6) { animation-delay: 140ms; }
 .PdNavItem:nth-child(9) { animation-delay: 175ms; }
+.PdNavItem { position: relative; }
 .PdNavItem:hover { background: var(--pdSurface3); color: var(--pdTextStrong); transform: translateX(2px); }
+.PdNavItem:active { transform: translateX(1px) scale(0.99); transition-duration: 60ms; }
 .PdNavItem.is-selected { transform: none; }
 .PdNavItem.is-selected {
   background: var(--pdAccentA01);
   color: var(--pdAccent08);
   font-weight: 600;
 }
+/* Left accent indicator on the selected item (solid-accent themes only —
+   gradient themes fill the whole pill instead) */
+.PdNavItem.is-selected::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  height: 18px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--pdAccent06);
+  transform: translateY(-50%);
+}
+[data-accent-type="gradient"] .PdNavItem.is-selected::before { display: none; }
+.PdNavItem.is-selected svg { color: var(--pdAccent06); }
+[data-accent-type="gradient"] .PdNavItem.is-selected svg { color: #fff; }
 [data-theme="dark"] .PdNavItem.is-selected {
   background: var(--pdAccentA02);
   color: var(--pdAccent08);
@@ -1892,11 +1920,13 @@ html, body {
   white-space: nowrap;
   font-family: inherit;
 }
-.FilterChip:hover { background: var(--pdSurface2); color: var(--pdTextStrong); border-color: var(--pdTextSubtle); }
+.FilterChip:hover { background: var(--pdSurface2); color: var(--pdTextStrong); border-color: var(--pdTextSubtle); transform: translateY(-1px); }
+.FilterChip:active { transform: translateY(0) scale(0.97); transition-duration: 60ms; }
 .FilterChip.is-active {
   background: var(--pdAccentA01);
   color: var(--pdAccent08);
   border: 1px solid var(--pdAccent04);
+  box-shadow: 0 1px 2px var(--pdAccentA02);
 }
 [data-theme="dark"] .FilterChip.is-active {
   background: var(--pdAccentA02);
@@ -2229,6 +2259,7 @@ html, body {
 .PdButton {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   height: 36px;
   padding: 0 16px;
@@ -2237,35 +2268,107 @@ html, body {
   font-family: var(--fontFamilySans);
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: background 150ms, filter 150ms, box-shadow 150ms;
+  transition: background 160ms var(--easeOut), color 160ms var(--easeOut),
+    border-color 160ms var(--easeOut), filter 160ms var(--easeOut),
+    box-shadow 200ms var(--easeOut), transform 140ms var(--easeSpring);
   white-space: nowrap;
+  will-change: transform;
 }
+.PdButton:active { transform: translateY(1px) scale(0.985); transition-duration: 60ms; }
+.PdButton:disabled { opacity: 0.5; cursor: default; transform: none; box-shadow: none; }
+
 .PdButton--primary {
   background: var(--pdAccent06);
   color: #fff;
+  box-shadow: var(--pdShadowAccent);
 }
-.PdButton--primary:hover { filter: brightness(0.88); }
+.PdButton--primary:hover { filter: brightness(0.94); transform: translateY(-1px); box-shadow: var(--pdShadowAccentHover); }
+.PdButton--primary:active { filter: brightness(0.9); box-shadow: var(--pdShadowAccent); }
 [data-accent-type="gradient"] .PdButton--primary {
   background: var(--pdAccentGradient);
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), 0 1px 3px rgba(0,0,0,0.18);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.22), var(--pdShadowAccent);
   text-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 [data-accent-type="gradient"] .PdButton--primary:hover {
   filter: brightness(1.08) saturate(1.12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.28), var(--pdShadowAccentHover);
 }
 .PdButton--secondary {
   background: var(--pdSurface1);
   color: var(--pdTextStrong);
   border: 1px solid var(--pdBorderStrong);
+  box-shadow: var(--pdShadowSm);
 }
-.PdButton--secondary:hover { background: var(--pdSurface2); }
+.PdButton--secondary:hover { background: var(--pdSurface2); border-color: var(--pdTextSubtle); transform: translateY(-1px); box-shadow: var(--pdShadowMd); }
+.PdButton--secondary:active { box-shadow: var(--pdShadowSm); }
 .PdButton--tertiary {
   background: transparent;
   color: var(--pdTextBase);
 }
-.PdButton--tertiary:hover { background: var(--pdSurface3); }
+.PdButton--tertiary:hover { background: var(--pdSurface3); color: var(--pdTextStrong); }
 .PdButton--small { height: 30px; padding: 0 12px; font-size: 13px; }
+
+/* ── Icon button (square, subtle) — sidebar sync, toolbar actions ─────────── */
+.PdIconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--pdBorder);
+  background: var(--pdSurface0);
+  color: var(--pdTextMuted);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 150ms var(--easeOut), color 150ms var(--easeOut),
+    border-color 150ms var(--easeOut), transform 140ms var(--easeSpring),
+    box-shadow 150ms var(--easeOut);
+}
+.PdIconBtn:hover {
+  background: var(--pdAccentA01);
+  border-color: var(--pdAccent04);
+  color: var(--pdAccent07);
+  transform: translateY(-1px);
+  box-shadow: var(--pdShadowSm);
+}
+.PdIconBtn:active { transform: translateY(0) scale(0.94); transition-duration: 60ms; }
+.PdIconBtn:disabled { opacity: 0.45; cursor: default; transform: none; box-shadow: none; background: var(--pdSurface0); border-color: var(--pdBorder); color: var(--pdTextMuted); }
+.PdIconBtn--done { background: var(--pdStatusDoneDot); border-color: var(--pdStatusDoneDot); color: #fff; }
+.PdIconBtn--done:hover { background: var(--pdStatusDoneDot); border-color: var(--pdStatusDoneDot); color: #fff; }
+
+/* ── Sync-all button — sidebar panel header ──────────────────────────────── */
+.PdSyncAllBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 0;
+  margin-bottom: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--pdBorder);
+  background: var(--pdSurface0);
+  cursor: pointer;
+  font-family: var(--fontFamilySans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--pdTextMuted);
+  transition: background 150ms var(--easeOut), color 150ms var(--easeOut),
+    border-color 150ms var(--easeOut), box-shadow 150ms var(--easeOut), transform 140ms var(--easeSpring);
+}
+.PdSyncAllBtn:hover:not(:disabled) {
+  background: var(--pdAccentA01);
+  border-color: var(--pdAccent04);
+  color: var(--pdAccent07);
+  box-shadow: var(--pdShadowSm);
+}
+.PdSyncAllBtn:active:not(:disabled) { transform: scale(0.98); }
+.PdSyncAllBtn:disabled { opacity: 0.5; cursor: default; }
 
 /* ============================================================
    COMMENT
@@ -2352,17 +2455,26 @@ html, body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--pdRadiusMd);
   border: 1px solid var(--pdBorder);
   background: var(--pdSurface2);
   color: var(--pdTextMuted);
   cursor: pointer;
-  transition: background-color 150ms, color 150ms;
+  transition: background 150ms var(--easeOut), color 150ms var(--easeOut),
+    border-color 150ms var(--easeOut), transform 220ms var(--easeSpring), box-shadow 150ms var(--easeOut);
   font-family: inherit;
 }
-.PdThemeToggle:hover { background: var(--pdSurface3); color: var(--pdTextStrong); }
+.PdThemeToggle:hover {
+  background: var(--pdAccentA01);
+  border-color: var(--pdAccent04);
+  color: var(--pdAccent07);
+  box-shadow: var(--pdShadowSm);
+}
+.PdThemeToggle:hover svg { transform: rotate(-18deg); }
+.PdThemeToggle svg { transition: transform 300ms var(--easeSpring); }
+.PdThemeToggle:active { transform: scale(0.92); transition-duration: 60ms; }
 
 /* ============================================================
    SLACK MESSAGE RENDERER

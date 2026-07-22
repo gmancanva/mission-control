@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { fetchTicketDetails, addComment, addRemoteLink, addAttachment, updateTicketFields } from '@/lib/jira'
 
+// Ticket keys are interpolated into upstream Jira API paths — reject anything
+// that isn't a plain PROJECT-123 key so the path can't be manipulated
+const VALID_KEY = /^[A-Z][A-Z0-9]{1,9}-\d{1,7}$/
+
 export async function GET(
   _req: NextRequest,
   { params }: { params: { key: string } }
 ) {
   try {
+    if (!VALID_KEY.test(params.key)) {
+      return NextResponse.json({ error: 'Invalid ticket key' }, { status: 400 })
+    }
     const detail = await fetchTicketDetails(params.key)
     return NextResponse.json(detail)
   } catch (error) {
@@ -19,6 +26,9 @@ export async function POST(
   { params }: { params: { key: string } }
 ) {
   try {
+    if (!VALID_KEY.test(params.key)) {
+      return NextResponse.json({ error: 'Invalid ticket key' }, { status: 400 })
+    }
     const contentType = req.headers.get('content-type') ?? ''
 
     if (contentType.includes('multipart/form-data')) {

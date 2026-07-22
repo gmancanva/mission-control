@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { hashPassword } from '@/lib/auth-token'
 
 const COOKIE_NAME = 'pd_auth'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const password = process.env.DASHBOARD_PASSWORD
 
   // If no password is configured, allow all traffic (dev mode)
@@ -10,22 +11,33 @@ export function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Always allow: login page, login API, OAuth callbacks, static assets
+  // Always allow: login page, login/logout API, OAuth start + callback (NOT disconnect —
+  // that's a state-changing route and must stay behind auth), static assets
   if (
     pathname === '/login' ||
     pathname === '/api/auth/login' ||
     pathname === '/api/auth/logout' ||
-    pathname.startsWith('/api/auth/canva') ||
-    pathname.startsWith('/api/auth/google') ||
+    pathname === '/api/auth/canva' ||
+    pathname === '/api/auth/canva/callback' ||
+    pathname === '/api/auth/google' ||
+    pathname === '/api/auth/google/callback' ||
     pathname.startsWith('/_next') ||
+    pathname.startsWith('/fonts') ||
+    pathname.startsWith('/icons') ||
     pathname === '/favicon.ico'
   ) {
     return NextResponse.next()
   }
 
-  // Check auth cookie
+  // Vercel cron requests authenticate via CRON_SECRET bearer token, not cookies
+  const cronSecret = process.env.CRON_SECRET
+  if (cronSecret && request.headers.get('authorization') === `Bearer ${cronSecret}`) {
+    return NextResponse.next()
+  }
+
+  // Check auth cookie — stores a hash of the password, not the password itself
   const authCookie = request.cookies.get(COOKIE_NAME)?.value
-  if (authCookie === password) {
+  if (authCookie && authCookie === await hashPassword(password)) {
     return NextResponse.next()
   }
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { hashPassword } from '@/lib/auth-token'
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const response = NextResponse.json({ ok: true })
-    response.cookies.set('pd_auth', password, {
+    response.cookies.set('pd_auth', await hashPassword(password), {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

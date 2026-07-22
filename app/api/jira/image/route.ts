@@ -19,9 +19,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Missing url param' }, { status: 400 })
   }
 
-  // Validate the URL is on the configured Jira domain
+  // Validate the URL is on the configured Jira domain — compare parsed origins,
+  // not string prefixes ("https://canva.atlassian.net.evil.com" must not pass)
   const base = getBaseUrl()
-  if (!base || !url.startsWith(base)) {
+  let allowed = false
+  try {
+    allowed = !!base && new URL(url).origin === new URL(base).origin
+  } catch { /* malformed URL → not allowed */ }
+  if (!allowed) {
     return NextResponse.json({ error: 'URL not allowed' }, { status: 403 })
   }
 

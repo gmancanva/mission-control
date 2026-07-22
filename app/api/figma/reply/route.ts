@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       message: string
     }
 
-    const res = await fetch(`https://api.figma.com/v1/files/${file_key}/comments`, {
+    const res = await fetch(`https://api.figma.com/v1/files/${encodeURIComponent(file_key)}/comments`, {
       method: 'POST',
       headers: { 'X-Figma-Token': token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, parent_id }),

@@ -25,9 +25,12 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# local env files
+# local env files — cover ALL .env variants (any of them may hold real tokens)
+.env
+.env.*
 .env*.local
 .env.local
+!.env*.example
 
 # vercel
 .vercel
@@ -43,7 +46,13 @@ next-env.d.ts
 CLAUDE.md
 
 # database & local caches (contain personal data — never commit)
+/data/
 data/hub.db
 data/hub.db-shm
 data/hub.db-wal
 data/*.json
+
+# throwaway MCP thread/calendar dump + merge scripts (contain real colleague
+# names, emails, and message content — never commit)
+__pycache__/
+/*.py

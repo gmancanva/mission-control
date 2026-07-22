@@ -5,6 +5,8 @@ import { isConnected, fetchMentions } from '@/lib/canva'
 import type { CanvaMention, CanvaMentionsCache } from '../route'
 import { DATA_DIR } from '@/lib/data-dir'
 
+export const dynamic = 'force-dynamic'
+
 const CACHE_PATH = path.join(DATA_DIR, 'canva-mentions-cache.json')
 
 function readCache(): CanvaMention[] {
@@ -28,7 +30,9 @@ function mergeMentions(existing: CanvaMention[], incoming: CanvaMention[]): { me
   let added = 0
   for (const m of incoming) {
     if (!map.has(m.id)) added++
-    map.set(m.id, m)
+    // Spread existing first: live API results are sparser than agent-seeded entries
+    // (no thumbnails/avatars/replies) — a re-sync must not strip those fields
+    map.set(m.id, { ...map.get(m.id), ...m })
   }
   const merged = Array.from(map.values()).sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

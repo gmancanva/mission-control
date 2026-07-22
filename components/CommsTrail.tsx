@@ -136,12 +136,13 @@ function buildFeed(
 
   for (const msg of slackMessages) {
     const sourceId = `slack-${msg.id}`
-    let threadKey: string | undefined
-    try {
-      const url = new URL(msg.permalink)
-      const threadTs = url.searchParams.get('thread_ts') ?? msg.ts
-      threadKey = `${msg.channel}:${threadTs}`
-    } catch { /* invalid URL, no thread key */ }
+    // Thread cache is keyed by the PARENT ts — prefer the explicit thread_ts field,
+    // fall back to the permalink query param, then the message's own ts
+    let threadTs = msg.thread_ts
+    if (!threadTs) {
+      try { threadTs = new URL(msg.permalink).searchParams.get('thread_ts') ?? msg.ts } catch { threadTs = msg.ts }
+    }
+    const threadKey = `${msg.channel}:${threadTs}`
     entries.push({
       id: sourceId, date: new Date(parseFloat(msg.ts) * 1000).toISOString(),
       project: msg.channelName, source: 'slack',

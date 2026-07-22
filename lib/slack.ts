@@ -63,13 +63,26 @@ function buildPermalink(workspaceUrl: string, channelId: string, ts: string): st
   return `${workspaceUrl}/archives/${channelId}/p${tsNoDot}`
 }
 
-/** Write a fresh result to the disk cache so it survives server restarts */
+/** Merge a fresh result into the disk cache so it survives server restarts.
+ *  MERGE, never replace — the cache also holds MCP-synced DM/private mentions
+ *  the bot token cannot see; a partial live result must not clobber them. */
 function writeToDiskCache(messages: SlackMessage[]): void {
   try {
     if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true })
+    type CacheEntry = SlackMessage & { key?: string; channel_id?: string }
+    let existing: CacheEntry[] = []
+    if (fs.existsSync(CACHE_PATH)) {
+      try {
+        existing = (JSON.parse(fs.readFileSync(CACHE_PATH, 'utf-8')) as { messages?: CacheEntry[] }).messages ?? []
+      } catch { /* corrupt cache — proceed with live only */ }
+    }
+    const keyOf = (m: CacheEntry) => m.key ?? m.id ?? `${m.channel_id ?? m.channel}:${m.ts}`
+    const byKey = new Map(existing.map(m => [keyOf(m), m]))
+    for (const m of messages) byKey.set(keyOf(m), { ...byKey.get(keyOf(m)), ...m })
+    const merged = [...byKey.values()].sort((a, b) => parseFloat(b.ts) - parseFloat(a.ts))
     fs.writeFileSync(CACHE_PATH, JSON.stringify({
       synced_at: new Date().toISOString(),
-      messages,
+      messages: merged,
     }, null, 2))
   } catch { /* non-fatal */ }
 }

@@ -43,6 +43,105 @@ function PriorityBadge({ priority }: { priority: string }) {
   return <span style={{ fontSize: 12, fontWeight: 600, color }}>{priority}</span>
 }
 
+const editInputStyle: React.CSSProperties = {
+  fontSize: 13,
+  background: 'var(--pdSurface2)',
+  border: '1px solid var(--pdAccent06)',
+  borderRadius: 6,
+  padding: '4px 8px',
+  color: 'var(--pdTextStrong)',
+  fontFamily: 'inherit',
+  outline: 'none',
+  width: '100%',
+}
+
+type EditorProps = {
+  editingField: string | null
+  editValue: string
+  setEditValue: (v: string) => void
+  saveField: (field: string, value: string) => void
+  cancelEdit: () => void
+  savingField: boolean
+  saveError: string | null
+  startEdit: (field: string, currentValue: string) => void
+}
+
+// InlineInput/FieldEditable live at MODULE scope on purpose: defined inside the
+// panel component they get a new identity every render, which remounts the
+// <input> on each keystroke and jumps the caret to the end of the value.
+
+// Inline editor row — shown in place of the value when editing
+function InlineInput({ field, type = 'text', options, editingField, editValue, setEditValue, saveField, cancelEdit, savingField, saveError }: {
+  field: string
+  type?: 'text' | 'url' | 'number' | 'date' | 'select'
+  options?: readonly string[]
+} & EditorProps) {
+  if (editingField !== field) return null
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        {type === 'select' && options ? (
+          <select value={editValue} onChange={(e) => setEditValue(e.target.value)} style={editInputStyle} autoFocus>
+            <option value="">— none —</option>
+            {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ) : (
+          <input
+            type={type}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            style={editInputStyle}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveField(field, editValue)
+              if (e.key === 'Escape') cancelEdit()
+            }}
+          />
+        )}
+        <button
+          type="button"
+          onClick={() => saveField(field, editValue)}
+          disabled={savingField}
+          className="PdButton PdButton--primary PdButton--small"
+          style={{ flexShrink: 0, opacity: savingField ? 0.5 : 1 }}
+        >
+          {savingField ? '…' : 'Save'}
+        </button>
+        <button type="button" onClick={cancelEdit} className="PdButton PdButton--tertiary PdButton--small" style={{ flexShrink: 0 }}>✕</button>
+      </div>
+      {saveError && <p style={{ fontSize: 12, color: 'var(--pdPrioHigh)' }}>{saveError}</p>}
+    </div>
+  )
+}
+
+// A read-only+editable field row: shows value + Edit button side by side
+function FieldEditable({
+  label, field, display, type = 'text', options, initialValue, ...editor
+}: {
+  label: string
+  field: string
+  display: React.ReactNode
+  type?: 'text' | 'url' | 'number' | 'date' | 'select'
+  options?: readonly string[]
+  initialValue: string
+} & EditorProps) {
+  return (
+    <div className="FieldRow" style={{ alignItems: 'flex-start' }}>
+      <span className="FieldRow__label" style={{ paddingTop: 2 }}>{label}</span>
+      <div style={{ flex: 1 }}>
+        {editor.editingField === field ? (
+          <InlineInput field={field} type={type} options={options} {...editor} />
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 14, color: 'var(--pdTextBase)' }}>{display}</span>
+            <EditBtn onClick={() => editor.startEdit(field, initialValue)} />
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function EditBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -315,89 +414,8 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
     return () => window.removeEventListener('keydown', handler)
   }, [onClose, editingField, editingDescription])
 
-  const inputStyle: React.CSSProperties = {
-    fontSize: 13,
-    background: 'var(--pdSurface2)',
-    border: '1px solid var(--pdAccent06)',
-    borderRadius: 6,
-    padding: '4px 8px',
-    color: 'var(--pdTextStrong)',
-    fontFamily: 'inherit',
-    outline: 'none',
-    width: '100%',
-  }
-
-  // Inline editor row — shown in place of the value when editing
-  function InlineInput({ field, type = 'text', options }: {
-    field: string
-    type?: 'text' | 'url' | 'number' | 'date' | 'select'
-    options?: readonly string[]
-  }) {
-    if (editingField !== field) return null
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {type === 'select' && options ? (
-            <select value={editValue} onChange={(e) => setEditValue(e.target.value)} style={inputStyle} autoFocus>
-              <option value="">— none —</option>
-              {options.map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-          ) : (
-            <input
-              type={type}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
-              style={inputStyle}
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') saveField(field, editValue)
-                if (e.key === 'Escape') cancelEdit()
-              }}
-            />
-          )}
-          <button
-            type="button"
-            onClick={() => saveField(field, editValue)}
-            disabled={savingField}
-            className="PdButton PdButton--primary PdButton--small"
-            style={{ flexShrink: 0, opacity: savingField ? 0.5 : 1 }}
-          >
-            {savingField ? '…' : 'Save'}
-          </button>
-          <button type="button" onClick={cancelEdit} className="PdButton PdButton--tertiary PdButton--small" style={{ flexShrink: 0 }}>✕</button>
-        </div>
-        {saveError && <p style={{ fontSize: 12, color: 'var(--pdPrioHigh)' }}>{saveError}</p>}
-      </div>
-    )
-  }
-
-  // A read-only+editable field row: shows value + Edit button side by side
-  function FieldEditable({
-    label, field, display, type = 'text', options, initialValue,
-  }: {
-    label: string
-    field: string
-    display: React.ReactNode
-    type?: 'text' | 'url' | 'number' | 'date' | 'select'
-    options?: readonly string[]
-    initialValue: string
-  }) {
-    return (
-      <div className="FieldRow" style={{ alignItems: 'flex-start' }}>
-        <span className="FieldRow__label" style={{ paddingTop: 2 }}>{label}</span>
-        <div style={{ flex: 1 }}>
-          {editingField === field ? (
-            <InlineInput field={field} type={type} options={options} />
-          ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 14, color: 'var(--pdTextBase)' }}>{display}</span>
-              <EditBtn onClick={() => startEdit(field, initialValue)} />
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
+  // Bundle of state + handlers threaded into the module-scope editor components
+  const editorProps: EditorProps = { editingField, editValue, setEditValue, saveField, cancelEdit, savingField, saveError, startEdit }
 
   return (
     <>
@@ -466,6 +484,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Priority */}
                 <FieldEditable
+                  {...editorProps}
                   label="Priority"
                   field="priority"
                   initialValue={detail.priority}
@@ -476,13 +495,14 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Due date */}
                 <FieldEditable
+                  {...editorProps}
                   label="Due"
                   field="dueDate"
                   initialValue={detail.dueDate ?? ''}
                   type="date"
                   display={
                     detail.dueDate
-                      ? <span style={{ color: new Date(detail.dueDate) < new Date() ? 'var(--pdPrioHigh)' : undefined }}>
+                      ? <span style={{ color: detail.dueDate.slice(0, 10) < new Date().toLocaleDateString('sv-SE') ? 'var(--pdPrioHigh)' : undefined }}>
                           {new Date(detail.dueDate).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                         </span>
                       : <span style={{ color: 'var(--pdTextSubtle)', fontStyle: 'italic' }}>Not set</span>
@@ -491,6 +511,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Start date */}
                 <FieldEditable
+                  {...editorProps}
                   label="Start date"
                   field="startDate"
                   initialValue={detail.startDate ?? ''}
@@ -504,6 +525,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Story points */}
                 <FieldEditable
+                  {...editorProps}
                   label="Story points"
                   field="storyPoints"
                   initialValue={detail.storyPoints?.toString() ?? ''}
@@ -517,6 +539,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Design status */}
                 <FieldEditable
+                  {...editorProps}
                   label="Design status"
                   field="designStatus"
                   initialValue={detail.designStatus ?? ''}
@@ -531,6 +554,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Category of work */}
                 <FieldEditable
+                  {...editorProps}
                   label="Category"
                   field="categoryOfWork"
                   initialValue={detail.categoryOfWork ?? ''}
@@ -545,6 +569,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Labels */}
                 <FieldEditable
+                  {...editorProps}
                   label="Labels"
                   field="labels"
                   initialValue={detail.labels.join(', ')}
@@ -560,6 +585,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Doc link */}
                 <FieldEditable
+                  {...editorProps}
                   label="Doc link"
                   field="docLink"
                   initialValue={detail.docLink ?? ''}
@@ -573,6 +599,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Prototype link */}
                 <FieldEditable
+                  {...editorProps}
                   label="Prototype"
                   field="prototypeLink"
                   initialValue={detail.prototypeLink ?? ''}
@@ -586,6 +613,7 @@ export default function TicketDetailPanel({ ticketKey, jiraBaseUrl, onClose }: P
 
                 {/* Slack channel */}
                 <FieldEditable
+                  {...editorProps}
                   label="Slack channel"
                   field="slackChannelName"
                   initialValue={detail.slackChannelName ?? ''}

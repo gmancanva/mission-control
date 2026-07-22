@@ -90,7 +90,17 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
 
     fetch('/api/calendar/weekly')
       .then((r) => r.json())
-      .then((d: CalendarWeekly & { available: boolean }) => setWeeklyMeetings(d))
+      .then((d: { available: boolean; weeks?: Record<string, CalendarWeekly> }) => {
+        // Route returns a map of weeks keyed by week_start (Monday) — pick the current week
+        if (!d.available || !d.weeks) { setWeeklyMeetings(null); return }
+        const now = new Date()
+        const dow = now.getDay()
+        const mon = new Date(now)
+        mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1))
+        const key = `${mon.getFullYear()}-${String(mon.getMonth() + 1).padStart(2, '0')}-${String(mon.getDate()).padStart(2, '0')}`
+        const week = d.weeks[key]
+        setWeeklyMeetings(week ? { ...week, available: true } : null)
+      })
       .catch(() => {})
   }, [])
 
@@ -458,11 +468,11 @@ export default function CapacityView({ sprintCapacityHours = 30 }: Props) {
                       }}
                     >
                       <span className="JiraKey" style={{ minWidth: 90, flexShrink: 0 }}>{ticket.key}</span>
-                      <span style={{ flex: 1, fontWeight: 500, color: 'var(--pdTextStrong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ flex: 1, minWidth: '40%', fontWeight: 500, color: 'var(--pdTextStrong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {ticket.summary}
                       </span>
                       {ticket.parentSummary && (
-                        <span style={{ fontSize: 11, color: 'var(--pdTextSubtle)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, flexShrink: 1 }}>
+                        <span style={{ fontSize: 11, color: 'var(--pdTextSubtle)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 180, flexShrink: 4 }}>
                           {ticket.parentSummary}
                         </span>
                       )}

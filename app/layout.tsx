@@ -14,7 +14,9 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" data-theme="light">
+    // suppressHydrationWarning: the inline script below stamps data-theme/accent
+    // attributes before hydration, which the server-rendered markup can't know
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
         <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>" />
         <script dangerouslySetInnerHTML={{

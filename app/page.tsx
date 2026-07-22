@@ -18,7 +18,7 @@ import UpdatesPage from '@/components/UpdatesPage'
 import OnboardingWizard from '@/components/OnboardingWizard'
 import { useTheme } from '@/components/ThemeProvider'
 import ProfileAvatar from '@/components/ProfileAvatar'
-import { Moon, Sun, Search, Plus, Settings, RefreshCw, Check, Copy, Sunrise, ListChecks, LayoutDashboard, Gauge, AtSign } from 'lucide-react'
+import { Moon, Sun, Search, Plus, Settings, RefreshCw, Check, Copy, Sunrise, ListChecks, LayoutDashboard, Gauge, AtSign, AlertTriangle, X } from 'lucide-react'
 
 type View = 'updates' | 'tasks' | 'jira-projects' | 'capacity' | 'comms' | 'settings'
 
@@ -34,20 +34,36 @@ function SyncIcon({ spinning }: { spinning: boolean }) {
   return <RefreshCw size={15} style={spinning ? { animation: 'spin 1s linear infinite' } : undefined} />
 }
 
+// ── Auth-loss detection ────────────────────────────────────────────────────────
+// Surfaced as a banner when an integration is configured but no longer authorised
+// (e.g. an OAuth token was wiped or expired, or an API token turned invalid).
+
+type AuthIssue = { key: string; message: string; action: 'canva-oauth' | 'settings' }
+
+const AUTH_ISSUE_DEFS: Record<string, AuthIssue> = {
+  canva:  { key: 'canva',  message: 'Canva sign-in has expired — reconnect to resume mention syncing.', action: 'canva-oauth' },
+  google: { key: 'google', message: 'Google Calendar is disconnected — reconnect it in Settings.', action: 'settings' },
+  jira:   { key: 'jira',   message: 'Jira API token is missing or invalid — update it in Settings.', action: 'settings' },
+  slack:  { key: 'slack',  message: 'Slack bot token is missing or invalid — update it in Settings.', action: 'settings' },
+  figma:  { key: 'figma',  message: 'Figma access token is missing or invalid — update it in Settings.', action: 'settings' },
+}
+
+const AUTH_ERROR_RE = /401|403|unauthori[sz]|not connected|expired|invalid[_ ]?token|forbidden/i
+
 export default function DashboardPage() {
   const { theme, toggle: toggleTheme } = useTheme()
   const searchParams = useSearchParams()
   const router = useRouter()
   const [activeView, setActiveView] = useState<View>('updates')
-  const [syncing, setSyncing] = useState(false)
-  const [syncStatusIdx, setSyncStatusIdx] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(null)
   const [calendarSyncKey, setCalendarSyncKey] = useState(0)
   const [sourceSyncTimes, setSourceSyncTimes] = useState<Record<string, string>>({})
   const [syncingSources, setSyncingSources] = useState<Set<string>>(new Set())
   const [copiedPrompt, setCopiedPrompt] = useState<string | null>(null)
+  const [googleConnected, setGoogleConnected] = useState(false)
+  const [authIssues, setAuthIssues] = useState<AuthIssue[]>([])
+  const [dismissedAuth, setDismissedAuth] = useState<Set<string>>(new Set())
   const [hoveredTooltip, setHoveredTooltip] = useState<{ key: string; x: number; y: number; h: number } | null>(null)
 
   const [epics, setEpics] = useState<JiraEpic[]>([])
@@ -70,9 +86,10 @@ export default function DashboardPage() {
   const [configuredIntegrations, setConfiguredIntegrations] = useState<Set<string>>(new Set())
   const [connectedCount, setConnectedCount] = useState<number | null>(null)
 
-  // OAuth callback errors — keyed by provider to show in the right card
-  const urlError = searchParams.get('error')
-  const canvaUrlError = searchParams.get('canva_error')
+  // OAuth callback errors — captured into state BEFORE the URL params are
+  // stripped below, otherwise Settings renders after the error is already gone
+  const [urlError, setUrlError] = useState<string | null>(null)
+  const [canvaUrlError, setCanvaUrlError] = useState<string | null>(null)
 
   // Sync activeView with ?view= param (used by OAuth callback redirects),
   // then strip all URL params so reloading always lands on the Summary page.
@@ -82,6 +99,10 @@ export default function DashboardPage() {
     if (v && validViews.includes(v as View)) {
       setActiveView(v as View)
     }
+    const err = searchParams.get('error')
+    const canvaErr = searchParams.get('canva_error')
+    if (err) setUrlError(err)
+    if (canvaErr) setCanvaUrlError(canvaErr)
     // Strip params from URL so the next reload goes to the default (Summary)
     if (searchParams.toString()) {
       router.replace('/', { scroll: false })
@@ -154,7 +175,6 @@ export default function DashboardPage() {
       }
 
       setSourceSyncTimes(prev => ({ ...prev, ...newSyncTimes }))
-      setLastSyncedAt(new Date())
       setError(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load data')
@@ -177,7 +197,7 @@ export default function DashboardPage() {
     const forceSetup = searchParams.get('setup') === '1'
     fetch('/api/settings')
       .then(r => r.json())
-      .then((s: Record<string, { source?: string; connected?: boolean; hasCache?: boolean; botTokenSet?: boolean; accessTokenSet?: boolean }>) => {
+      .then((s: Record<string, { source?: string; connected?: boolean; hasCache?: boolean; botTokenSet?: boolean; accessTokenSet?: boolean; apiTokenSet?: boolean; clientIdSet?: boolean }>) => {
         const cfgMap: Record<string, boolean> = {
           jira:   s.jira?.source !== 'none',
           slack:  s.slack?.source !== 'none',
@@ -189,6 +209,16 @@ export default function DashboardPage() {
         const cfgSet = new Set(Object.entries(cfgMap).filter(([, v]) => v).map(([k]) => k))
         setConfiguredIntegrations(cfgSet)
         setConnectedCount(cfgSet.size)
+        setGoogleConnected(s.googleCalendar?.connected === true)
+
+        // Configured but no longer authorised → surface a reconnect banner
+        const issues: AuthIssue[] = []
+        if (s.canva?.clientIdSet && s.canva?.connected !== true) issues.push(AUTH_ISSUE_DEFS.canva)
+        if (s.googleCreds?.source !== 'none' && s.googleCalendar?.connected !== true) issues.push(AUTH_ISSUE_DEFS.google)
+        if (s.jira?.source !== 'none' && !s.jira?.apiTokenSet) issues.push(AUTH_ISSUE_DEFS.jira)
+        if (s.slack?.source !== 'none' && !s.slack?.botTokenSet) issues.push(AUTH_ISSUE_DEFS.slack)
+        if (s.figma?.source !== 'none' && !s.figma?.accessTokenSet) issues.push(AUTH_ISSUE_DEFS.figma)
+        setAuthIssues(issues)
 
         // Show wizard if forced via ?setup=1, or if nothing at all is configured
         const nothingConfigured = cfgSet.size === 0
@@ -204,83 +234,26 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const SYNC_STATUSES = [
-    'Pulling Jira tickets…',
-    'Fetching Slack messages…',
-    'Syncing Google Calendar…',
-    'Checking Canva mentions…',
-    'Refreshing Figma activity…',
-  ]
+  function flagAuthIssue(key: string) {
+    const def = AUTH_ISSUE_DEFS[key]
+    if (!def) return
+    setAuthIssues(prev => (prev.some(i => i.key === key) ? prev : [...prev, def]))
+    // A fresh failure re-surfaces the banner even if previously dismissed
+    setDismissedAuth(prev => {
+      if (!prev.has(key)) return prev
+      const next = new Set(prev); next.delete(key); return next
+    })
+  }
 
-  useEffect(() => {
-    if (!syncing) { setSyncStatusIdx(0); return }
-    const id = setInterval(() => setSyncStatusIdx(i => (i + 1) % SYNC_STATUSES.length), 1800)
-    return () => clearInterval(id)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [syncing])
+  function clearAuthIssue(key: string) {
+    setAuthIssues(prev => (prev.some(i => i.key === key) ? prev.filter(i => i.key !== key) : prev))
+  }
 
-  async function handleSync() {
-    setSyncing(true)
-    try {
-      // Bust Jira only — Slack/Figma/Canva read from disk cache (bot not in channels;
-      // busting Slack causes it to re-poll 26 channels via API which takes ages)
-      const [jiraRes, slackRes, figmaRes, canvaRes] = await Promise.allSettled([
-        fetch('/api/jira?bust=1'),
-        fetch('/api/slack'),        // no bust — reads disk cache written by MCP sync
-        fetch('/api/figma'),        // no bust — reads disk cache
-        fetch('/api/canva'),        // no bust — reads disk cache
-        fetch('/api/calendar/weekly', { method: 'POST' }),
-      ])
-
-      const newSyncTimes: Record<string, string> = {}
-
-      if (jiraRes.status === 'fulfilled' && jiraRes.value.ok) {
-        const d = await jiraRes.value.json() as { epics: JiraEpic[]; myTickets: JiraTicket[]; projectKeys: string[]; synced_at?: string }
-        setEpics(d.epics ?? [])
-        setMyTickets(d.myTickets ?? [])
-        setProjectKeys(d.projectKeys ?? [])
-        if (d.synced_at) newSyncTimes.jira = d.synced_at
-      }
-      if (slackRes.status === 'fulfilled' && slackRes.value.ok) {
-        const d = await slackRes.value.json() as { messages: SlackMessage[]; synced_at?: string }
-        setSlackMessages(d.messages ?? [])
-        if (d.synced_at) newSyncTimes.slack = d.synced_at
-      }
-      if (figmaRes.status === 'fulfilled' && figmaRes.value.ok) {
-        const d = await figmaRes.value.json() as { available: boolean; mentions?: FigmaMention[]; synced_at?: string }
-        setFigmaMentions(d.mentions ?? [])
-        if (d.synced_at) newSyncTimes.figma = d.synced_at
-      }
-      if (canvaRes.status === 'fulfilled' && canvaRes.value.ok) {
-        const d = await canvaRes.value.json() as { available: boolean; mentions?: CanvaMention[]; synced_at?: string }
-        setCanvaMentions(d.mentions ?? [])
-        if (d.synced_at) newSyncTimes.canva = d.synced_at
-      }
-
-      // Fetch calendar synced_at after POST (re-read the cache to get the updated timestamp)
-      try {
-        const calendarGetRes = await fetch('/api/calendar/weekly')
-        if (calendarGetRes.ok) {
-          const calendarGetData = await calendarGetRes.json() as { available: boolean; synced_at?: string }
-          if (calendarGetData.available && calendarGetData.synced_at) newSyncTimes.calendar = calendarGetData.synced_at
-        }
-      } catch { /* best-effort */ }
-
-      setSourceSyncTimes(prev => ({ ...prev, ...newSyncTimes }))
-      // Always bump calendar key — renders fresh from cache even if POST failed
-      setCalendarSyncKey(k => k + 1)
-      setLastSyncedAt(new Date())
-    } finally {
-      setSyncing(false)
-    }
-
-    // Canva live sync is slow (~60s) — fire in the background after spinner clears
-    fetch('/api/canva/sync')
-      .then(r => r.ok ? r.json() : null)
-      .then((data: { mentions?: CanvaMention[] } | null) => {
-        if (data?.mentions) setCanvaMentions(data.mentions)
-      })
-      .catch(() => { /* best-effort */ })
+  async function checkAuthFailure(key: string, res: Response) {
+    if (res.ok) { clearAuthIssue(key); return }
+    if (res.status === 401 || res.status === 403) { flagAuthIssue(key); return }
+    const body = await res.clone().json().catch(() => null) as { error?: string } | null
+    if (body?.error && AUTH_ERROR_RE.test(body.error)) flagAuthIssue(key)
   }
 
   async function syncSource(key: string) {
@@ -288,6 +261,7 @@ export default function DashboardPage() {
     try {
       if (key === 'jira') {
         const res = await fetch('/api/jira?bust=1')
+        await checkAuthFailure('jira', res)
         if (res.ok) {
           const d = await res.json() as { epics: JiraEpic[]; myTickets: JiraTicket[]; projectKeys: string[]; synced_at?: string }
           setEpics(d.epics ?? []); setMyTickets(d.myTickets ?? []); setProjectKeys(d.projectKeys ?? [])
@@ -295,6 +269,7 @@ export default function DashboardPage() {
         }
       } else if (key === 'canva') {
         const res = await fetch('/api/canva/sync')
+        await checkAuthFailure('canva', res)
         if (res.ok) {
           const d = await res.json() as { mentions?: CanvaMention[]; synced_at?: string }
           if (d.mentions) setCanvaMentions(d.mentions)
@@ -307,6 +282,7 @@ export default function DashboardPage() {
         }
       } else if (key === 'figma') {
         const res = await fetch('/api/figma?bust=1')
+        await checkAuthFailure('figma', res)
         if (res.ok) {
           const d = await res.json() as { available: boolean; mentions?: FigmaMention[]; synced_at?: string }
           if (d.mentions) setFigmaMentions(d.mentions)
@@ -314,10 +290,22 @@ export default function DashboardPage() {
         }
       } else if (key === 'slack') {
         const res = await fetch('/api/slack?bust=1')
+        await checkAuthFailure('slack', res)
         if (res.ok) {
           const d = await res.json() as { messages?: SlackMessage[]; synced_at?: string }
           if (d.messages) setSlackMessages(d.messages)
           if (d.synced_at) setSourceSyncTimes(prev => ({ ...prev, slack: d.synced_at! }))
+        }
+      } else if (key === 'calendar') {
+        const res = await fetch('/api/calendar/weekly', { method: 'POST' })
+        await checkAuthFailure('google', res)
+        if (res.ok) {
+          const getRes = await fetch('/api/calendar/weekly')
+          if (getRes.ok) {
+            const d = await getRes.json() as { available: boolean; synced_at?: string }
+            if (d.synced_at) setSourceSyncTimes(prev => ({ ...prev, calendar: d.synced_at! }))
+          }
+          setCalendarSyncKey(k => k + 1)
         }
       }
     } finally {
@@ -434,34 +422,18 @@ export default function DashboardPage() {
             {(() => {
               const isAnySyncing = ['jira', 'canva', 'figma'].some(k => syncingSources.has(k))
               return (
-                <button
-                  onClick={syncAll}
-                  disabled={isAnySyncing}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5,
-                    width: '100%', padding: '5px 0', marginBottom: 4,
-                    borderRadius: 6, border: '1px solid var(--pdBorder)',
-                    background: 'var(--pdSurface0)', cursor: isAnySyncing ? 'default' : 'pointer',
-                    fontSize: 11, fontWeight: 600, color: 'var(--pdTextMuted)',
-                    opacity: isAnySyncing ? 0.5 : 1, transition: 'opacity 0.15s',
-                  }}
-                >
-                  <RefreshCw size={10} style={isAnySyncing ? { animation: 'spin 1s linear infinite' } : undefined} />
+                <button onClick={syncAll} disabled={isAnySyncing} className="PdSyncAllBtn">
+                  <RefreshCw size={11} style={isAnySyncing ? { animation: 'spin 1s linear infinite' } : undefined} />
                   Sync all
                 </button>
               )
             })()}
-            {syncing && (
-              <p style={{ fontSize: 11, color: 'var(--pdTextMuted)', textAlign: 'center', margin: '2px 0', transition: 'opacity 0.3s' }}>
-                {SYNC_STATUSES[syncStatusIdx]}
-              </p>
-            )}
             {([
               { key: 'jira', label: 'Jira', mcp: false },
               { key: 'canva', label: 'Canva', mcp: false },
               { key: 'figma', label: 'Figma', mcp: false },
               { key: 'slack', label: 'Slack', mcp: true },
-              { key: 'calendar', label: 'Calendar', mcp: true },
+              { key: 'calendar', label: 'Calendar', mcp: !googleConnected },
             ] as { key: string; label: string; mcp: boolean }[]).map(({ key, label, mcp }) => {
               const ts = sourceSyncTimes[key]
               const ageStr = ts ? (() => {
@@ -472,7 +444,7 @@ export default function DashboardPage() {
                 return ageDays > 0 ? `${ageDays}d ago` : ageHr > 0 ? `${ageHr}h ago` : ageMin < 1 ? 'just now' : `${ageMin}m ago`
               })() : null
               const stale = ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) >= 1 : false
-              const isSyncing = syncingSources.has(key) || (syncing && !mcp)
+              const isSyncing = syncingSources.has(key)
               const isCopied = copiedPrompt === key
               return (
                 <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '3px 0' }}>
@@ -493,32 +465,20 @@ export default function DashboardPage() {
                     >
                       <button
                         onClick={() => copyMcpPrompt(key)}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          width: 26, height: 26, borderRadius: 6, border: '1px solid var(--pdBorder)',
-                          background: isCopied ? 'var(--pdStatusDoneDot)' : 'var(--pdSurface0)',
-                          cursor: 'pointer', padding: 0, flexShrink: 0,
-                          transition: 'background 0.15s',
-                        }}
+                        className={`PdIconBtn${isCopied ? ' PdIconBtn--done' : ''}`}
+                        aria-label={`Copy ${label} sync prompt`}
                       >
-                        {isCopied
-                          ? <Check size={11} style={{ color: 'white' }} />
-                          : <Copy size={11} />
-                        }
+                        {isCopied ? <Check size={12} /> : <Copy size={12} />}
                       </button>
                     </div>
                   ) : (
                     <button
                       onClick={() => syncSource(key)}
                       disabled={isSyncing}
-                      style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        width: 26, height: 26, borderRadius: 6, border: '1px solid var(--pdBorder)',
-                        background: 'var(--pdSurface0)', cursor: isSyncing ? 'default' : 'pointer',
-                        padding: 0, flexShrink: 0, opacity: isSyncing ? 0.5 : 1,
-                      }}
+                      className="PdIconBtn"
+                      aria-label={`Sync ${label}`}
                     >
-                      <RefreshCw size={11} style={isSyncing ? { animation: 'spin 1s linear infinite' } : undefined} />
+                      <RefreshCw size={12} style={isSyncing ? { animation: 'spin 1s linear infinite' } : undefined} />
                     </button>
                   )}
                 </div>
@@ -577,6 +537,33 @@ export default function DashboardPage() {
             New ticket
           </button>
         </header>
+
+        {/* Reconnect banners — shown when an integration lost its auth */}
+        {authIssues.filter(i => !dismissedAuth.has(i.key)).map(issue => (
+          <div key={issue.key} style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '8px 20px',
+            background: 'var(--pdStatusTodoBg)', borderBottom: '1px solid var(--pdBorder)',
+          }}>
+            <AlertTriangle size={14} style={{ color: 'var(--pdPrioMedium)', flexShrink: 0 }} />
+            <span style={{ flex: 1, fontSize: 13, color: 'var(--pdTextStrong)' }}>{issue.message}</span>
+            {issue.action === 'canva-oauth' ? (
+              <a className="PdButton PdButton--primary PdButton--small" href="/api/auth/canva">
+                Sign in to Canva
+              </a>
+            ) : (
+              <button className="PdButton PdButton--small" onClick={() => setActiveView('settings')}>
+                Open Settings
+              </button>
+            )}
+            <button
+              onClick={() => setDismissedAuth(prev => new Set([...prev, issue.key]))}
+              aria-label="Dismiss"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--pdTextMuted)', padding: 4, display: 'flex' }}
+            >
+              <X size={13} />
+            </button>
+          </div>
+        ))}
 
         {/* Content area */}
         <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>

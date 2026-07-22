@@ -72,21 +72,50 @@ async function resolveUsers(messages: SlackMessage[]): Promise<SlackMessage[]> {
   })
 }
 
+// MCP-written cache entries use { key, channel: <name>, channel_id: <id> } — map them
+// to the SlackMessage shape ({ id, channel: <id>, channelName }) the UI expects.
+type CacheMessage = SlackMessage & { key?: string; channel_id?: string }
+
+function normalizeCacheMessages(messages: CacheMessage[]): CacheMessage[] {
+  return messages.map(m => {
+    if (m.id && m.channelName) return m
+    const channelId = m.channel_id ?? m.channel
+    return {
+      ...m,
+      id: m.id ?? m.key ?? `${channelId}:${m.ts}`,
+      channelName: m.channelName ?? m.channel,
+      channel: channelId,
+    }
+  })
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
     const isBust = searchParams.get('bust') === '1'
 
-    // Explicit sync request: attempt live fetch, write to disk on success
+    // Explicit sync request: attempt live fetch, merge into disk cache on success.
+    // MERGE, never replace — the disk cache holds MCP-synced DM/private mentions
+    // the bot token can never see; a partial live result must not clobber them.
     if (isBust && getBotToken()) {
       bustCache()
       try {
         const messages = await fetchMessages()
         // fetchMessages returns [] when it can't reach any channels — fall through to disk cache
         if (messages.length > 0) {
-          const payload = { synced_at: new Date().toISOString(), messages }
+          let existing: CacheMessage[] = []
+          if (fs.existsSync(CACHE_PATH)) {
+            try {
+              existing = (JSON.parse(fs.readFileSync(CACHE_PATH, 'utf-8')) as { messages?: CacheMessage[] }).messages ?? []
+            } catch { /* corrupt cache — proceed with live only */ }
+          }
+          const keyOf = (m: CacheMessage) => m.key ?? m.id ?? `${m.channel_id ?? m.channel}:${m.ts}`
+          const byKey = new Map(existing.map(m => [keyOf(m), m]))
+          for (const m of messages) byKey.set(keyOf(m), { ...byKey.get(keyOf(m)), ...m })
+          const merged = [...byKey.values()].sort((a, b) => parseFloat(b.ts) - parseFloat(a.ts))
+          const payload = { synced_at: new Date().toISOString(), messages: merged }
           fs.writeFileSync(CACHE_PATH, JSON.stringify(payload, null, 2))
-          return NextResponse.json(payload)
+          return NextResponse.json({ ...payload, messages: normalizeCacheMessages(merged) })
         }
       } catch { /* fall through to disk cache below */ }
     }
@@ -94,8 +123,8 @@ export async function GET(request: NextRequest) {
     // Regular GET (or live fetch returned nothing): serve disk cache — always fast
     if (fs.existsSync(CACHE_PATH)) {
       const raw = fs.readFileSync(CACHE_PATH, 'utf-8')
-      const data = JSON.parse(raw) as { synced_at?: string; messages: SlackMessage[] }
-      const enriched = await resolveUsers(data.messages)
+      const data = JSON.parse(raw) as { synced_at?: string; messages: CacheMessage[] }
+      const enriched = await resolveUsers(normalizeCacheMessages(data.messages))
       // Fall back to file mtime if the cache predates the synced_at field
       const syncedAt = data.synced_at ?? fs.statSync(CACHE_PATH).mtime.toISOString()
       return NextResponse.json({ messages: enriched, synced_at: syncedAt })

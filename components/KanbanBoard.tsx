@@ -120,7 +120,11 @@ function getPriorityIcon(priority: string) {
 
 function isOverdue(dueDate: string | null): boolean {
   if (!dueDate) return false
-  return new Date(dueDate) < new Date()
+  // Compare date strings — new Date('YYYY-MM-DD') parses as UTC midnight (10am AEST),
+  // which would mark tickets due today as overdue for most of the working day
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  return dueDate.slice(0, 10) < todayStr
 }
 
 

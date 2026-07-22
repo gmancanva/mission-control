@@ -398,12 +398,21 @@ export default function TemplateTaskModal({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batch: true, tickets }),
       })
+      if (!res.ok) {
+        const err = await res.json().catch(() => null) as { error?: string } | null
+        setFailedTickets([{ summary: 'Batch create', error: err?.error ?? `Server error ${res.status}` }])
+        setCreating(false)
+        return
+      }
       const data = await res.json() as {
         created: Array<{ key: string; summary: string }>
         failed: Array<{ summary: string; error: string }>
       }
 
       if (data.failed && data.failed.length > 0) {
+        // Deselect the templates that DID create, so a retry doesn't duplicate them in Jira
+        const createdSummaries = new Set((data.created ?? []).map(t => t.summary))
+        setSelected(prev => new Set([...prev].filter(idx => !createdSummaries.has(TEMPLATES[idx]?.name))))
         setFailedTickets(data.failed)
         setCreating(false)
         return

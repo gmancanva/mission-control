@@ -834,9 +834,19 @@ export async function createTicketFromTemplate(params: {
   }
 
   if (myAccountId) fields.assignee = { id: myAccountId }
+  if (params.estimateSeconds > 0) {
+    fields.timetracking = { originalEstimate: `${Math.round(params.estimateSeconds / 60)}m` }
+  }
   applyCanvaFields(fields, { ...params, epicKey: params.epicKey ?? undefined })
 
   const created = (await jiraPost('/rest/api/3/issue', { fields })) as { id: string; key: string }
+
+  // Move into the requested sprint via the Agile API (sprint isn't a create field)
+  if (params.sprintId) {
+    try {
+      await jiraPost(`/rest/agile/1.0/sprint/${params.sprintId}/issue`, { issues: [created.key] })
+    } catch { /* non-fatal — ticket stays in backlog */ }
+  }
 
   if (params.initialStatus && params.initialStatus !== 'Backlog') {
     try { await transitionTicket(created.key, params.initialStatus) } catch { /* non-fatal */ }

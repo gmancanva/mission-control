@@ -432,7 +432,9 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
       link: m.permalink,
       isQuestion: isQuestion(m.text),
       slackChannel: m.channel,
-      slackTs: (() => {
+      // Thread cache is keyed by the PARENT ts — prefer the explicit thread_ts field,
+      // fall back to the permalink query param, then the message's own ts
+      slackTs: m.thread_ts ?? (() => {
         try { return new URL(m.permalink).searchParams.get('thread_ts') ?? m.ts } catch { return m.ts }
       })(),
     })),
@@ -479,7 +481,10 @@ export default function UpdatesPage({ epics, myTickets, slackMessages, canvaMent
   const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
 
   // ── Calendar: today's meetings ──
-  const todayStr = new Date().toISOString().slice(0, 10)
+  // Local date, not toISOString() (UTC) — cache keys are Sydney-local dates, and
+  // UTC is still "yesterday" every morning before 10-11am AEST
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
   const todayWeekStart = getWeekRange(0).start
   const todayEntry = calendarByWeek[todayWeekStart]?.daily_breakdown.find(d => d.date === todayStr)
   const meetingCount = todayEntry?.meetings.length ?? 0
